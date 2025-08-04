@@ -1,19 +1,24 @@
 [tool.poetry]
-name = "python-project-template"
+name = "tiny-chat"
 version = "0.0.1"
-description = "A template for python-based research project"
+description = "A simplified multi-agent chat system inspired by Sotopia"
 authors = ["Haofei Yu <yuhaofei44@gmail.com>"]
 license = "Apache 2.0 License"
 readme = "README.md"
 packages = [
-    { include = "src" }
+    { include = "tiny_chat" }
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, <3.12"
+python = ">=3.9, <3.13"
 mypy = "^1.8.0"
 beartype = "^0.17.1"
 pydantic = "^2.8.2"
+openai = "^1.12.0"
+asyncio = "^3.4.3"
+typing-extensions = "^4.9.0"
+gymnasium = "^0.29.0"
+pettingzoo = "^1.24.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.6.0"
