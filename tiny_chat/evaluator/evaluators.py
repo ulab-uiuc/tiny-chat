@@ -11,9 +11,9 @@ from .messages import (
     ScriptEnvironmentResponse,
 )
 
-log = logging.getLogger("evaluators")
+log = logging.getLogger('evaluators')
 
-T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
+T_eval_dim = TypeVar('T_eval_dim', bound=BaseModel)
 
 
 class EvaluationForTwoAgents(BaseModel, Generic[T_eval_dim]):
@@ -54,20 +54,20 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         p1_leaving = (
             len(messages) > 1
             and isinstance(messages[-2][1], AgentAction)
-            and messages[-2][1].action_type == "leave"
+            and messages[-2][1].action_type == 'leave'
         )
         p2_leaving = (
             bool(len(messages))
             and isinstance(messages[-1][1], AgentAction)
-            and messages[-1][1].action_type == "leave"
+            and messages[-1][1].action_type == 'leave'
         )
         # Rule 3: If the conversation is stale for too long, terminate the conversation
         stale_count = 0
         for message in messages[::-1]:
-            if message[0] == "Environment":
+            if message[0] == 'Environment':
                 continue
             assert isinstance(message[1], AgentAction)
-            if message[1].action_type == "none":
+            if message[1].action_type == 'none':
                 stale_count += 1
             else:
                 break
@@ -76,15 +76,15 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         stale_too_long = stale_count > self.max_stale_turn
         terminated = conversation_too_long or p1_leaving or p2_leaving or stale_too_long
         reasons_for_termination = (
-            f"{'The conversation is too long; ' if conversation_too_long else ''}"
-            f"{'Agent 1 is leaving; ' if p1_leaving else ''}"
-            f"{'Agent 2 is leaving; ' if p2_leaving else ''}"
-            f"{'The conversation stales for too long; ' if stale_too_long else ''}"
+            f'{"The conversation is too long; " if conversation_too_long else ""}'
+            f'{"Agent 1 is leaving; " if p1_leaving else ""}'
+            f'{"Agent 2 is leaving; " if p2_leaving else ""}'
+            f'{"The conversation stales for too long; " if stale_too_long else ""}'
         )
         return [
             (
-                "environment",
-                (("terminated", terminated), reasons_for_termination),
+                'environment',
+                (('terminated', terminated), reasons_for_termination),
             )
         ]
 
@@ -101,14 +101,14 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         response_format_class: type[EvaluationForTwoAgents[T_eval_dim]],
     ) -> None:
         self.model_name = model_name
-        self.prompt = ""
+        self.prompt = ''
         self.response_format_class = response_format_class
 
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         raise NotImplementedError(
-            "EpisodeLLMEvaluator is not implemented for synchronous evaluation"
+            'EpisodeLLMEvaluator is not implemented for synchronous evaluation'
         )
 
     @validate_call
@@ -116,7 +116,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         self,
         turn_number: int,
         messages: list[tuple[str, Message]] | None,
-        history: str = "",
+        history: str = '',
         temperature: float = 0.0,
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # filter did nothing
@@ -124,13 +124,13 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             messages_filtered = [
                 (x, y)
                 for x, y in messages
-                if "did nothing" not in y.to_natural_language()
+                if 'did nothing' not in y.to_natural_language()
             ]
-            history = "\n".join(
+            history = '\n'.join(
                 [
                     (
-                        f"{x} {y.to_natural_language()}"
-                        if x != "Environment"
+                        f'{x} {y.to_natural_language()}'
+                        if x != 'Environment'
                         else y.to_natural_language()
                     )
                     for x, y in messages_filtered
@@ -144,7 +144,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             return response_list
         except Exception as e:
             print(e)
-            log.debug(f"[red] Failed to generate environment response. {e}")
+            log.debug(f'[red] Failed to generate environment response. {e}')
             return []
 
 
@@ -158,10 +158,10 @@ class EvaluationDimension(BaseModel):
 class SotopiaDimensions(BaseModel):
     """Evaluation dimensions used in Sotopia"""
 
-    overall_score: tuple[str, float] = ("Overall score", 0.0)
-    goal_achievement: tuple[str, float] = ("Goal achievement", 0.0)
-    social_intelligence: tuple[str, float] = ("Social intelligence", 0.0)
-    communication_quality: tuple[str, float] = ("Communication quality", 0.0)
+    overall_score: tuple[str, float] = ('Overall score', 0.0)
+    goal_achievement: tuple[str, float] = ('Goal achievement', 0.0)
+    social_intelligence: tuple[str, float] = ('Social intelligence', 0.0)
+    communication_quality: tuple[str, float] = ('Communication quality', 0.0)
 
 
 @validate_call
@@ -176,17 +176,17 @@ def _reduce(
         comments_dict[response[0]] += reasoning
     scores: list[float | int] = []
     for k, v in responses_dict.items():
-        if k == "terminated":
+        if k == 'terminated':
             assert all([isinstance(x, bool) for x in v])
             reduced_dict[k] = any(v)
         else:
             assert all([isinstance(x, (float, int)) for x in v])
             reduced_dict[k] = sum(v) / len(v)
             scores.append(reduced_dict[k])
-    if len(scores) and "overall_score" not in responses_dict:
+    if len(scores) and 'overall_score' not in responses_dict:
         scores = [x for x in scores if x is not None]
-        reduced_dict["overall_score"] = sum(scores) / len(scores)
-    comments = "\n".join([f"{k}: {v}" for k, v in comments_dict.items()])
+        reduced_dict['overall_score'] = sum(scores) / len(scores)
+    comments = '\n'.join([f'{k}: {v}' for k, v in comments_dict.items()])
     return reduced_dict, comments
 
 
@@ -205,74 +205,74 @@ def unweighted_aggregate_evaluate(
         defaultdict(list)
     )
     for response in responses:
-        assert response[0] == "environment" or response[0].startswith("agent")
+        assert response[0] == 'environment' or response[0].startswith('agent')
         responses_dict[response[0]].append(response[1])
 
-    environment_responses: tuple[dict[str, float | int | bool], str] = ({}, "")
-    agent_1_responses: tuple[dict[str, float | int | bool], str] = ({}, "")
-    agent_2_responses: tuple[dict[str, float | int | bool], str] = ({}, "")
+    environment_responses: tuple[dict[str, float | int | bool], str] = ({}, '')
+    agent_1_responses: tuple[dict[str, float | int | bool], str] = ({}, '')
+    agent_2_responses: tuple[dict[str, float | int | bool], str] = ({}, '')
     for k, v in responses_dict.items():
-        if k == "environment":
+        if k == 'environment':
             environment_responses = _reduce(v)
         else:
-            if k == "agent_1":
+            if k == 'agent_1':
                 agent_1_responses = _reduce(v)
-            elif k == "agent_2":
+            elif k == 'agent_2':
                 agent_2_responses = _reduce(v)
             else:
                 # TODO: supports more than two agents
-                raise ValueError(f"Only supports agent_1 and agent_2, got {k}")
+                raise ValueError(f'Only supports agent_1 and agent_2, got {k}')
 
     comments = (
         (
-            f"Environment comments: {environment_responses[1]}\n"
+            f'Environment comments: {environment_responses[1]}\n'
             if environment_responses[1]
-            else ""
+            else ''
         )
         + (
-            f"Agent 1 comments:\n{agent_1_responses[1]}\n"
+            f'Agent 1 comments:\n{agent_1_responses[1]}\n'
             if agent_1_responses[1]
-            else ""
+            else ''
         )
         + (
-            f"Agent 2 comments:\n{agent_2_responses[1]}\n"
+            f'Agent 2 comments:\n{agent_2_responses[1]}\n'
             if agent_2_responses[1]
-            else ""
+            else ''
         )
     )
     if (
-        "terminated" in environment_responses[0]
-        and environment_responses[0]["terminated"]
+        'terminated' in environment_responses[0]
+        and environment_responses[0]['terminated']
     ):
-        log.debug(f"[green] The conversation is terminated. {responses}")
+        log.debug(f'[green] The conversation is terminated. {responses}')
     return ScriptEnvironmentResponse(
         terminated=(
-            environment_responses[0]["terminated"]
-            if "terminated" in environment_responses[0]
+            environment_responses[0]['terminated']
+            if 'terminated' in environment_responses[0]
             else False
         ),
         p1_rate=(
             (
                 (
-                    agent_1_responses[0]["overall_score"]
-                    if "overall_score" in agent_1_responses[0]
+                    agent_1_responses[0]['overall_score']
+                    if 'overall_score' in agent_1_responses[0]
                     else 0
                 ),
                 agent_1_responses[0],
             )
-            if agent_1_responses != ({}, "")
+            if agent_1_responses != ({}, '')
             else None
         ),
         p2_rate=(
             (
                 (
-                    agent_2_responses[0]["overall_score"]
-                    if "overall_score" in agent_2_responses[0]
+                    agent_2_responses[0]['overall_score']
+                    if 'overall_score' in agent_2_responses[0]
                     else 0
                 ),
                 agent_2_responses[0],
             )
-            if agent_2_responses != ({}, "")
+            if agent_2_responses != ({}, '')
             else None
         ),
         comments=comments,

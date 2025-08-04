@@ -1,4 +1,5 @@
 from enum import IntEnum
+
 from pydantic import BaseModel, Field
 
 
@@ -12,40 +13,40 @@ class RelationshipType(IntEnum):
 
 
 class BaseAgentProfile(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default='')
     first_name: str = Field()
     last_name: str = Field()
     age: int = Field(default=0)
-    occupation: str = Field(default="")
-    gender: str = Field(default="")
-    gender_pronoun: str = Field(default="")
-    public_info: str = Field(default="")
-    big_five: str = Field(default="")
+    occupation: str = Field(default='')
+    gender: str = Field(default='')
+    gender_pronoun: str = Field(default='')
+    public_info: str = Field(default='')
+    big_five: str = Field(default='')
     moral_values: list[str] = Field(default_factory=list)
     schwartz_personal_values: list[str] = Field(default_factory=list)
-    personality_and_values: str = Field(default="")
-    decision_making_style: str = Field(default="")
-    secret: str = Field(default="")
-    model_id: str = Field(default="")
-    mbti: str = Field(default="")
+    personality_and_values: str = Field(default='')
+    decision_making_style: str = Field(default='')
+    secret: str = Field(default='')
+    model_id: str = Field(default='')
+    mbti: str = Field(default='')
     tag: str = Field(
-        default="",
-        description="The tag of the agent, used for searching, could be convenient to document agent profiles from different works and sources",
+        default='',
+        description='The tag of the agent, used for searching, could be convenient to document agent profiles from different works and sources',
     )
 
 
 class BaseEnvironmentProfile(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default='')
     codename: str = Field(
-        default="",
-        description="The codename of the environment",
+        default='',
+        description='The codename of the environment',
     )
     source: str = Field(
-        default="",
-        description="The source of the environment",
+        default='',
+        description='The source of the environment',
     )
     scenario: str = Field(
-        description="A concrete scenario of where the social interaction takes place, the scenario should have two agents (agent1 and agent2), and you should illustrate the relationship between the two agents, and for what purpose agent1 is interacting with agent2. Please avoid mentioning specific names and occupations in the scenario and keep all the mentions gender-neutral. Also avoid generating scenarios that requires childrend (below 18) or elderly (above 70) to be involved.",
+        description='A concrete scenario of where the social interaction takes place, the scenario should have two agents (agent1 and agent2), and you should illustrate the relationship between the two agents, and for what purpose agent1 is interacting with agent2. Please avoid mentioning specific names and occupations in the scenario and keep all the mentions gender-neutral. Also avoid generating scenarios that requires childrend (below 18) or elderly (above 70) to be involved.',
     )
     agent_goals: list[str] = Field(
         default_factory=list,
@@ -53,7 +54,7 @@ class BaseEnvironmentProfile(BaseModel):
     )
     relationship: RelationshipType = Field(
         default=RelationshipType.stranger,
-        description="The relationship between the two agents, choose from: stranger, know_by_name, acquaintance, friend, romantic_relationship, family_member. Do not make up a relationship, but choose from the list, 0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member",
+        description='The relationship between the two agents, choose from: stranger, know_by_name, acquaintance, friend, romantic_relationship, family_member. Do not make up a relationship, but choose from the list, 0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member',
     )
     age_constraint: str | None = Field(
         default=None,
@@ -67,20 +68,20 @@ class BaseEnvironmentProfile(BaseModel):
         default=None,
     )
     tag: str = Field(
-        default="",
-        description="The tag of the environment, used for searching, could be convenient to document environment profiles from different works and sources",
+        default='',
+        description='The tag of the environment, used for searching, could be convenient to document environment profiles from different works and sources',
     )
 
 
 class BaseRelationshipProfile(BaseModel):
-    pk: str | None = Field(default="")
+    pk: str | None = Field(default='')
     agent_1_id: str = Field()
     agent_2_id: str = Field()
     relationship: RelationshipType = Field(
-        description="0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member",
+        description='0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member',
     )  # this could be improved by limiting str to a relationship Enum
     background_story: str | None = Field(default=None)
     tag: str = Field(
-        default="",
-        description="The tag of the relationship, used for searching, could be convenient to document relationship profiles from different works and sources",
+        default='',
+        description='The tag of the relationship, used for searching, could be convenient to document relationship profiles from different works and sources',
     )

@@ -2,10 +2,11 @@ import asyncio
 import copy
 import itertools
 import random
-from typing import Any, Literal, Optional, Type, TypeVar
+from typing import Any, Literal, TypeVar
 
 from pydantic import validate_call
 
+from tiny_chat.evaluators import Evaluator, unweighted_aggregate_evaluate
 from tiny_chat.messages import (
     ActionType,
     AgentAction,
@@ -14,34 +15,32 @@ from tiny_chat.messages import (
     ScriptBackground,
     SimpleMessage,
 )
-from tiny_chat.evaluators import Evaluator, unweighted_aggregate_evaluate
 
-TBackground = TypeVar("TBackground", bound=ScriptBackground)
+TBackground = TypeVar('TBackground', bound=ScriptBackground)
 
 
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
-    action_str = ""
+    action_str = ''
     for agent, action in actions.items():
         # Only record actions that did something
-        if action.action_type != "none":
-            if action_str != "":
-                action_str += ";"  # separate actions with semicolon
-            action_str += f"{agent} {action.to_natural_language()}"
+        if action.action_type != 'none':
+            if action_str != '':
+                action_str += ';'  # separate actions with semicolon
+            action_str += f'{agent} {action.to_natural_language()}'
     return action_str
 
 
 class TinyChatEnvironment:
-
     def __init__(
         self,
         available_action_types: set[ActionType] = set(
-            ["none", "speak", "non-verbal communication", "action", "leave"]
+            ['none', 'speak', 'non-verbal communication', 'action', 'leave']
         ),
-        action_order: Literal["simultaneous", "round-robin", "random"] = "simultaneous",
+        action_order: Literal['simultaneous', 'round-robin', 'random'] = 'simultaneous',
         evaluators: list[Evaluator] = [],
-        model_name: str = "gpt-4o-mini",
+        model_name: str = 'gpt-4o-mini',
         terminal_evaluators: list[Evaluator] = [],
-        background_class: Optional[Type[TBackground]] = None,
+        background_class: type[TBackground] | None = None,
     ) -> None:
         """A chat environment for parallel agents.
 
@@ -56,13 +55,13 @@ class TinyChatEnvironment:
         else:
             self.background_class = background_class
         self.background = self.background_class(
-            scenario="",
-            p1_background="",
-            p2_background="",
-            p1_goal="",
-            p2_goal="",
-            p1_name="",
-            p2_name="",
+            scenario='',
+            p1_background='',
+            p2_background='',
+            p1_goal='',
+            p2_goal='',
+            p1_name='',
+            p2_name='',
         )
 
         self.agents = []
@@ -102,34 +101,34 @@ class TinyChatEnvironment:
         self.reset_inbox()
 
         if agents is not None:
-            assert agents, "agents must be provided"
-            assert len(agents) == 2, "Only supporting two agents right now"
+            assert agents, 'agents must be provided'
+            assert len(agents) == 2, 'Only supporting two agents right now'
             agent_names = list(agents.keys())
 
             # Extract goals from agents if available
             agent_goals = []
             for agent_name in agent_names:
                 agent = agents[agent_name]
-                if hasattr(agent, "goal"):
+                if hasattr(agent, 'goal'):
                     agent_goals.append(agent.goal)
                 else:
-                    agent_goals.append("Achieve your objectives in this conversation")
+                    agent_goals.append('Achieve your objectives in this conversation')
 
             raw_background = self.background_class(
                 scenario=(
-                    options.get("scenario", "A conversation between two agents")
+                    options.get('scenario', 'A conversation between two agents')
                     if options
-                    else "A conversation between two agents"
+                    else 'A conversation between two agents'
                 ),
                 p1_background=(
                     self._get_agent_background(agents[agent_names[0]], 0)
                     if not lite
-                    else ""
+                    else ''
                 ),
                 p2_background=(
                     self._get_agent_background(agents[agent_names[1]], 1)
                     if not lite
-                    else ""
+                    else ''
                 ),
                 p1_goal=f"<root viewer='agent_0'>{agent_goals[0]}</root>",
                 p2_goal=f"<root viewer='agent_1'>{agent_goals[1]}</root>",
@@ -147,7 +146,7 @@ class TinyChatEnvironment:
                 p2_name=raw_background.p2_name,
             )
         else:
-            raise ValueError("agents must be provided")
+            raise ValueError('agents must be provided')
 
         self.agents = [self.background.p1_name, self.background.p2_name]
         agent_backgrounds = []
@@ -171,26 +170,26 @@ class TinyChatEnvironment:
         background_for_b = agent_backgrounds[1]
 
         if not omniscient:
-            background_for_a.p2_goal = "Unknown"
-            background_for_b.p1_goal = "Unknown"
+            background_for_a.p2_goal = 'Unknown'
+            background_for_b.p1_goal = 'Unknown'
 
         self.action_spaces = {
             agent: {
-                "action_type": list(range(len(self.available_action_types))),
-                "argument": str,
+                'action_type': list(range(len(self.available_action_types))),
+                'argument': str,
             }
             for agent in self.agents
         }
         self.turn_number = 0
         self.action_mask = [False for _ in self.agents]
-        if self.action_order == "round-robin":
+        if self.action_order == 'round-robin':
             self.action_mask[0] = True
-        elif self.action_order == "random":
+        elif self.action_order == 'random':
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
 
-        self.recv_message("Environment", self.background)
+        self.recv_message('Environment', self.background)
 
         return {
             self.background.p1_name: Observation(
@@ -199,7 +198,7 @@ class TinyChatEnvironment:
                 available_actions=(
                     list(self.available_action_types)
                     if self.action_mask[0]
-                    else ["none"]
+                    else ['none']
                 ),
             ),
             self.background.p2_name: Observation(
@@ -208,20 +207,20 @@ class TinyChatEnvironment:
                 available_actions=(
                     list(self.available_action_types)
                     if self.action_mask[1]
-                    else ["none"]
+                    else ['none']
                 ),
             ),
         }
 
     def _get_agent_background(self, agent: Any, agent_id: int) -> str:
         """Extract background information from agent"""
-        if hasattr(agent, "profile"):
+        if hasattr(agent, 'profile'):
             profile = agent.profile
-            if hasattr(profile, "to_background_string"):
+            if hasattr(profile, 'to_background_string'):
                 return profile.to_background_string(agent_id)
-            elif hasattr(profile, "description"):
+            elif hasattr(profile, 'description'):
                 return f"<root><p viewer='agent_{agent_id}'>{profile.description}</p></root>"
-        elif hasattr(agent, "description"):
+        elif hasattr(agent, 'description'):
             return f"<root><p viewer='agent_{agent_id}'>{agent.description}</p></root>"
         return f"<root><p viewer='agent_{agent_id}'>Agent {agent_id}</p></root>"
 
@@ -249,18 +248,18 @@ class TinyChatEnvironment:
             if isinstance(action, AgentAction):
                 complied_actions[key] = action
             else:
-                action["action_type"] = self.available_action_types[
-                    int(action["action_type"])
+                action['action_type'] = self.available_action_types[
+                    int(action['action_type'])
                 ]
                 complied_actions[key] = AgentAction.parse_obj(action)
 
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(action_type="none", argument="")
+                complied_actions[agent] = AgentAction(action_type='none', argument='')
 
         self.recv_message(
-            "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
+            'Environment', SimpleMessage(message=f'Turn #{self.turn_number}')
         )
         for agent, action in complied_actions.items():
             self.recv_message(agent, action)
@@ -277,9 +276,9 @@ class TinyChatEnvironment:
         )
 
         self.action_mask = [False for _ in self.agents]
-        if self.action_order == "round-robin":
+        if self.action_order == 'round-robin':
             self.action_mask[self.turn_number % len(self.action_mask)] = True
-        elif self.action_order == "random":
+        elif self.action_order == 'random':
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
@@ -292,7 +291,7 @@ class TinyChatEnvironment:
                     available_actions=(
                         list(self.available_action_types)
                         if self.action_mask[0]
-                        else ["none"]
+                        else ['none']
                     ),
                 ),
                 self.background.p2_name: Observation(
@@ -301,7 +300,7 @@ class TinyChatEnvironment:
                     available_actions=(
                         list(self.available_action_types)
                         if self.action_mask[1]
-                        else ["none"]
+                        else ['none']
                     ),
                 ),
             },
@@ -335,12 +334,12 @@ class TinyChatEnvironment:
             },
             {
                 self.background.p1_name: {
-                    "comments": response.comments or "",
-                    "complete_rating": response.p1_rate or 0,
+                    'comments': response.comments or '',
+                    'complete_rating': response.p1_rate or 0,
                 },
                 self.background.p2_name: {
-                    "comments": response.comments or "",
-                    "complete_rating": response.p2_rate or 0,
+                    'comments': response.comments or '',
+                    'complete_rating': response.p2_rate or 0,
                 },
             },
         )
@@ -364,18 +363,18 @@ class TinyChatEnvironment:
             if isinstance(action, AgentAction):
                 complied_actions[key] = action
             else:
-                action["action_type"] = self.available_action_types[
-                    int(action["action_type"])
+                action['action_type'] = self.available_action_types[
+                    int(action['action_type'])
                 ]
                 complied_actions[key] = AgentAction.parse_obj(action)
 
         # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(action_type="none", argument="")
+                complied_actions[agent] = AgentAction(action_type='none', argument='')
 
         self.recv_message(
-            "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
+            'Environment', SimpleMessage(message=f'Turn #{self.turn_number}')
         )
         for agent, action in complied_actions.items():
             self.recv_message(agent, action)
@@ -421,26 +420,26 @@ class TinyChatEnvironment:
                 response.comments = terminal_response.comments
 
         self.action_mask = [False for _ in self.agents]
-        if self.action_order == "round-robin":
+        if self.action_order == 'round-robin':
             self.action_mask[self.turn_number % len(self.action_mask)] = True
-        elif self.action_order == "random":
+        elif self.action_order == 'random':
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
         obs = _actions_to_natural_language(complied_actions)
         info = {
             self.background.p1_name: {
-                "comments": response.comments or "",
-                "complete_rating": response.p1_rate or 0,
+                'comments': response.comments or '',
+                'complete_rating': response.p1_rate or 0,
             },
             self.background.p2_name: {
-                "comments": response.comments or "",
-                "complete_rating": response.p2_rate or 0,
+                'comments': response.comments or '',
+                'complete_rating': response.p2_rate or 0,
             },
         }
         if response.terminated and self.terminal_evaluators:
-            info["rewards_prompt"] = {
-                "overall_prompt": self.terminal_evaluators[0].prompt  # type: ignore
+            info['rewards_prompt'] = {
+                'overall_prompt': self.terminal_evaluators[0].prompt  # type: ignore
             }
 
         return (
@@ -451,7 +450,7 @@ class TinyChatEnvironment:
                     available_actions=(
                         list(self.available_action_types)
                         if self.action_mask[0]
-                        else ["none"]
+                        else ['none']
                     ),
                 ),
                 self.background.p2_name: Observation(
@@ -460,7 +459,7 @@ class TinyChatEnvironment:
                     available_actions=(
                         list(self.available_action_types)
                         if self.action_mask[1]
-                        else ["none"]
+                        else ['none']
                     ),
                 ),
             },
@@ -495,7 +494,7 @@ class TinyChatEnvironment:
             info,
         )
 
-    def render(self, mode: str = "human") -> None:
+    def render(self, mode: str = 'human') -> None:
         pass
 
     def close(self) -> None:

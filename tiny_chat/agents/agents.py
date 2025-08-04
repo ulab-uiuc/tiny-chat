@@ -1,8 +1,6 @@
-from typing import List, Optional
-from tiny_chat.messages import Observation, AgentAction, Message
-from tiny_chat.profile import AgentProfile
 from tiny_chat.generator import generate_agent
-from tiny_chat.generator import generate_env_profile
+from tiny_chat.messages import AgentAction, Message, Observation
+from tiny_chat.profile import AgentProfile
 
 
 class LLMAgent:
@@ -11,17 +9,17 @@ class LLMAgent:
     def __init__(
         self,
         agent_name: str,
-        model: str = "gpt-4o-mini",
-        api_key: Optional[str] = None,
-        goal: Optional[str] = None,
-        agent_profile: Optional[AgentProfile] = None,
+        model: str = 'gpt-4o-mini',
+        api_key: str | None = None,
+        goal: str | None = None,
+        agent_profile: AgentProfile | None = None,
     ):
         self.agent_name = agent_name
         self.model = model
         self.api_key = api_key
-        self._goal = goal or "Have a natural conversation"
+        self._goal = goal or 'Have a natural conversation'
         self.agent_profile = agent_profile
-        self.message_history: List[Message] = []
+        self.message_history: list[Message] = []
 
     @property
     def goal(self) -> str:
@@ -34,10 +32,10 @@ class LLMAgent:
         self._goal = goal
 
     async def act(self, obs: Observation) -> AgentAction:
-        self.recv_message("Environment", obs)
+        self.recv_message('Environment', obs)
 
-        if len(obs.available_actions) == 1 and "none" in obs.available_actions:
-            return AgentAction(action_type="none", argument="")
+        if len(obs.available_actions) == 1 and 'none' in obs.available_actions:
+            return AgentAction(action_type='none', argument='')
         else:
             action = await generate_agent()
             return action
@@ -49,21 +47,21 @@ class LLMAgent:
         # Add agent profile information if available
         if self.agent_profile:
             context_parts.append(
-                f"Agent Profile: {self.agent_profile.to_natural_language()}"
+                f'Agent Profile: {self.agent_profile.to_natural_language()}'
             )
 
         # Add background if available
         if self.goal:
-            context_parts.append(f"Your goal: {self.goal}")
+            context_parts.append(f'Your goal: {self.goal}')
 
         # Add message history
         for msg in self.message_history:
-            context_parts.append(f"{msg.to_natural_language()}")
+            context_parts.append(f'{msg.to_natural_language()}')
 
         # Add current observation
         context_parts.append(observation.to_natural_language())
 
-        return "\n".join(context_parts)
+        return '\n'.join(context_parts)
 
     def reset(self) -> None:
         """Reset agent state"""

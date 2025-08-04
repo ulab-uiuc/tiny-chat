@@ -1,37 +1,35 @@
 import logging
 import os
-from litellm import acompletion
-from litellm.utils import supports_response_schema
-from litellm.litellm_core_utils.get_supported_openai_params import (
-    get_supported_openai_params,
-)
 from typing import cast
 
 import gin
-
+from litellm import acompletion
+from litellm.litellm_core_utils.get_supported_openai_params import (
+    get_supported_openai_params,
+)
+from litellm.utils import supports_response_schema
 from pydantic import validate_call
 from rich import print
 from rich.logging import RichHandler
+from sotopia.generation_utils.output_parsers import (
+    EnvResponse,
+    OutputParser,
+    OutputType,
+    PydanticOutputParser,
+    ScriptOutputParser,
+    StrOutputParser,
+)
+from sotopia.utils import format_docstring
 
-from tiny_chat.profile import EnvironmentProfile, RelationshipProfile
 from tiny_chat.messages import ActionType, AgentAction, ScriptBackground
 from tiny_chat.messages.message_classes import (
     ScriptInteraction,
     ScriptInteractionReturnType,
 )
-from sotopia.utils import format_docstring
-
-from sotopia.generation_utils.output_parsers import (
-    OutputParser,
-    PydanticOutputParser,
-    StrOutputParser,
-    OutputType,
-    EnvResponse,
-    ScriptOutputParser,
-)
+from tiny_chat.profile import EnvironmentProfile, RelationshipProfile
 
 # Configure logger
-log = logging.getLogger("sotopia.generation")
+log = logging.getLogger('sotopia.generation')
 log.setLevel(logging.INFO)
 
 # Create console handler with rich formatting
@@ -40,7 +38,7 @@ console_handler.setLevel(logging.INFO)
 
 # Create formatter
 formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
 )
 console_handler.setFormatter(formatter)
 
@@ -48,7 +46,7 @@ console_handler.setFormatter(formatter)
 log.addHandler(console_handler)
 
 # subject to future OpenAI changes
-DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
+DEFAULT_BAD_OUTPUT_PROCESS_MODEL = 'gpt-4o-mini'
 
 
 @validate_call
@@ -68,18 +66,18 @@ async def format_bad_output(
     """
 
     input_values = {
-        "ill_formed_output": ill_formed_output,
-        "format_instructions": format_instructions,
+        'ill_formed_output': ill_formed_output,
+        'format_instructions': format_instructions,
     }
     content = template.format(**input_values)
     response = await acompletion(
         model=model_name,
-        response_format={"type": "json_object"},
-        messages=[{"role": "user", "content": content}],
+        response_format={'type': 'json_object'},
+        messages=[{'role': 'user', 'content': content}],
     )
     reformatted_output = response.choices[0].message.content
     assert isinstance(reformatted_output, str)
-    log.info(f"Reformated output: {reformatted_output}")
+    log.info(f'Reformated output: {reformatted_output}')
     return reformatted_output
 
 
@@ -97,22 +95,22 @@ async def agenerate(
 ) -> OutputType:
     """Generate text using LiteLLM instead of Langchain."""
     # Format template with input values
-    if "format_instructions" not in input_values:
-        input_values["format_instructions"] = output_parser.get_format_instructions()
+    if 'format_instructions' not in input_values:
+        input_values['format_instructions'] = output_parser.get_format_instructions()
 
     # Process template
     template = format_docstring(template)
 
     # Replace template variables
     for key, value in input_values.items():
-        template = template.replace(f"{{{key}}}", str(value))
+        template = template.replace(f'{{{key}}}', str(value))
 
-    if model_name.startswith("custom"):
+    if model_name.startswith('custom'):
         base_url, api_key = (
-            model_name.split("@")[1],
-            os.environ.get("CUSTOM_API_KEY", "EMPTY"),
+            model_name.split('@')[1],
+            os.environ.get('CUSTOM_API_KEY', 'EMPTY'),
         )
-        model_name = model_name.split("@")[0].replace("custom/", "openai/")
+        model_name = model_name.split('@')[0].replace('custom/', 'openai/')
     else:
         base_url = None
         api_key = None
@@ -121,17 +119,17 @@ async def agenerate(
         if not base_url:
             params = get_supported_openai_params(model=model_name)
             assert params is not None
-            assert (
-                "response_format" in params
-            ), "response_format is not supported in this model"
-            assert supports_response_schema(
-                model=model_name
-            ), "response_schema is not supported in this model"
-        messages = [{"role": "user", "content": template}]
+            assert 'response_format' in params, (
+                'response_format is not supported in this model'
+            )
+            assert supports_response_schema(model=model_name), (
+                'response_schema is not supported in this model'
+            )
+        messages = [{'role': 'user', 'content': template}]
 
-        assert isinstance(
-            output_parser, PydanticOutputParser
-        ), "structured output only supported in PydanticOutputParser"
+        assert isinstance(output_parser, PydanticOutputParser), (
+            'structured output only supported in PydanticOutputParser'
+        )
         response = await acompletion(
             model=model_name,
             messages=messages,
@@ -142,11 +140,11 @@ async def agenerate(
             api_key=api_key,
         )
         result = response.choices[0].message.content
-        log.info(f"Generated result: {result}")
+        log.info(f'Generated result: {result}')
         assert isinstance(result, str)
         return cast(OutputType, output_parser.parse(result))
 
-    messages = [{"role": "user", "content": template}]
+    messages = [{'role': 'user', 'content': template}]
 
     response = await acompletion(
         model=model_name,
@@ -164,8 +162,8 @@ async def agenerate(
         if isinstance(output_parser, ScriptOutputParser):
             raise e
         log.debug(
-            f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
-            extra={"markup": True},
+            f'[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse',
+            extra={'markup': True},
         )
         # Handle bad output reformatting
         reformat_result = await format_bad_output(
@@ -176,7 +174,7 @@ async def agenerate(
         )
         parsed_result = output_parser.parse(reformat_result)
 
-    log.info(f"Generated result: {parsed_result}")
+    log.info(f'Generated result: {parsed_result}')
     return parsed_result
 
 
@@ -184,8 +182,8 @@ async def agenerate(
 @validate_call
 async def agenerate_env_profile(
     model_name: str,
-    inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
-    examples: str = "",
+    inspiration_prompt: str = 'asking my boyfriend to stop being friends with his ex',
+    examples: str = '',
     temperature: float = 0.7,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
@@ -223,7 +221,7 @@ async def agenerate_relationship_profile(
     """
     Using langchain to generate the background
     """
-    agent_profile = "\n".join(agents_profiles)
+    agent_profile = '\n'.join(agents_profiles)
     return await agenerate(
         model_name=model_name,
         template="""Please generate relationship between two agents based on the agents' profiles below. Note that you generate
@@ -298,7 +296,7 @@ async def agenerate_action(
                 agent=agent,
                 turn_number=str(turn_number),
                 history=history,
-                action_list=" ".join(action_types),
+                action_list=' '.join(action_types),
             ),
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
@@ -306,8 +304,8 @@ async def agenerate_action(
             use_fixed_model_version=use_fixed_model_version,
         )
     except Exception as e:
-        log.warning(f"Failed to generate action due to {e}")
-        return AgentAction(action_type="none", argument="")
+        log.warning(f'Failed to generate action due to {e}')
+        return AgentAction(action_type='none', argument='')
 
 
 @gin.configurable
@@ -317,8 +315,8 @@ async def agenerate_script(
     background: ScriptBackground,
     temperature: float = 0.7,
     agent_names: list[str] = [],
-    agent_name: str = "",
-    history: str = "",
+    agent_name: str = '',
+    history: str = '',
     single_step: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
@@ -384,11 +382,11 @@ async def agenerate_script(
             )
     except Exception as e:
         # TODO raise(e) # Maybe we do not want to return anything?
-        print(f"Exception in agenerate {e}")
+        print(f'Exception in agenerate {e}')
         return_default_value: ScriptInteractionReturnType = (
             ScriptInteraction.default_value_for_return_type()
         )
-        return (return_default_value, "")
+        return (return_default_value, '')
 
 
 @validate_call
@@ -398,13 +396,13 @@ def process_history(
     """
     Format the script background
     """
-    result = ""
+    result = ''
     if isinstance(script, ScriptBackground | EnvResponse):
         script = script.dict()
-        result = "The initial observation\n\n"
+        result = 'The initial observation\n\n'
     for key, value in script.items():
         if value:
-            result += f"{key}: {value} \n"
+            result += f'{key}: {value} \n'
     return result
 
 
@@ -436,16 +434,16 @@ async def agenerate_init_profile(
             remember to use examples and behaviors in the person's life to demonstrate it.
             """,
         input_values=dict(
-            name=basic_info["name"],
-            age=basic_info["age"],
-            gender_identity=basic_info["gender_identity"],
-            pronoun=basic_info["pronoun"],
-            occupation=basic_info["occupation"],
-            bigfive=basic_info["Big_Five_Personality"],
-            mft=basic_info["Moral_Foundation"],
-            schwartz=basic_info["Schwartz_Portrait_Value"],
-            decision_style=basic_info["Decision_making_Style"],
-            secret=basic_info["secret"],
+            name=basic_info['name'],
+            age=basic_info['age'],
+            gender_identity=basic_info['gender_identity'],
+            pronoun=basic_info['pronoun'],
+            occupation=basic_info['occupation'],
+            bigfive=basic_info['Big_Five_Personality'],
+            mft=basic_info['Moral_Foundation'],
+            schwartz=basic_info['Schwartz_Portrait_Value'],
+            decision_style=basic_info['Decision_making_Style'],
+            secret=basic_info['secret'],
         ),
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
@@ -461,7 +459,7 @@ async def convert_narratives(
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
-    if narrative == "first":
+    if narrative == 'first':
         return await agenerate(
             model_name=model_name,
             template="""Please convert the following text into a first-person narrative.
@@ -472,7 +470,7 @@ async def convert_narratives(
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
         )
-    elif narrative == "second":
+    elif narrative == 'second':
         return await agenerate(
             model_name=model_name,
             template="""Please convert the following text into a second-person narrative.
@@ -484,7 +482,7 @@ async def convert_narratives(
             use_fixed_model_version=use_fixed_model_version,
         )
     else:
-        raise ValueError(f"Narrative {narrative} is not supported.")
+        raise ValueError(f'Narrative {narrative} is not supported.')
 
 
 @validate_call

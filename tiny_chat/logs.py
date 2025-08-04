@@ -1,7 +1,6 @@
-import sys
+from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Self
-from pydantic import model_validator, BaseModel, Field
-from typing import Literal
+
 from tiny_chat.profile import AgentProfile
 
 
@@ -12,20 +11,20 @@ class BaseEpisodeLog(BaseModel):
 
     environment: str = Field(index=True)
     agents: list[str] = Field(index=True)
-    tag: str | None = Field(index=True, default="")
+    tag: str | None = Field(index=True, default='')
     models: list[str] | None = Field(index=True, default=[])
     messages: list[list[tuple[str, str, str]]]  # Messages arranged by turn
-    reasoning: str = Field(default="")
+    reasoning: str = Field(default='')
     rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
-    rewards_prompt: str = Field(default="")
+    rewards_prompt: str = Field(default='')
 
-    @model_validator(mode="after")
+    @model_validator(mode='after')
     def agent_number_message_number_reward_number_turn_number_match(self) -> Self:
         agent_number = len(self.agents)
 
-        assert (
-            len(self.rewards) == agent_number
-        ), f"Number of agents in rewards {len(self.rewards)} and agents {agent_number} do not match"
+        assert len(self.rewards) == agent_number, (
+            f'Number of agents in rewards {len(self.rewards)} and agents {agent_number} do not match'
+        )
         return self
 
     def render_for_humans(self) -> tuple[list[AgentProfile], list[str]]:
@@ -40,9 +39,9 @@ class BaseEpisodeLog(BaseModel):
         for idx, turn in enumerate(self.messages):
             messages_in_this_turn = []
             if idx == 0:
-                assert (
-                    len(turn) >= 2
-                ), "The first turn should have at least environemnt messages"
+                assert len(turn) >= 2, (
+                    'The first turn should have at least environemnt messages'
+                )
                 messages_in_this_turn.append(
                     f"{turn[0][1]}'s perspective (i.e., what {turn[0][1]} knows before the episode starts): {turn[0][2]}"
                 )
@@ -50,20 +49,20 @@ class BaseEpisodeLog(BaseModel):
                     f"{turn[1][1]}'s perspective (i.e., what {turn[1][1]} knows before the episode starts): {turn[1][2]}"
                 )
             for sender, receiver, message in turn:
-                if receiver == "Environment":
-                    if sender != "Environment":
-                        if "did nothing" in message:
+                if receiver == 'Environment':
+                    if sender != 'Environment':
+                        if 'did nothing' in message:
                             continue
                         else:
-                            if "said:" in message:
-                                messages_in_this_turn.append(f"{sender} {message}")
+                            if 'said:' in message:
+                                messages_in_this_turn.append(f'{sender} {message}')
                             else:
-                                messages_in_this_turn.append(f"{sender}: {message}")
+                                messages_in_this_turn.append(f'{sender}: {message}')
                     else:
                         messages_in_this_turn.append(message)
-            messages_and_rewards.append("\n".join(messages_in_this_turn))
-        messages_and_rewards.append(f"The reasoning is:\n{self.reasoning}")
+            messages_and_rewards.append('\n'.join(messages_in_this_turn))
+        messages_and_rewards.append(f'The reasoning is:\n{self.reasoning}')
         messages_and_rewards.append(
-            f"The rewards are:\nAgent 1: {self.rewards[0]}\nAgent 2: {self.rewards[1]}"
+            f'The rewards are:\nAgent 1: {self.rewards[0]}\nAgent 2: {self.rewards[1]}'
         )
         return agent_profiles, messages_and_rewards

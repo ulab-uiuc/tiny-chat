@@ -1,3 +1,3 @@
 from .environment import TinyChatEnvironment
 
-__all__ = ["TinyChatEnvironment"]
+__all__ = ['TinyChatEnvironment']
