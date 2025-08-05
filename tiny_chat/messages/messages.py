@@ -90,8 +90,8 @@ class ChatBackground(ScriptBackground):
             scenario=scenario,
             p1_name=agent1_name,
             p2_name=agent2_name,
-            p1_background="",  # 默认空背景
-            p2_background="",  # 默认空背景
+            p1_background="",  
+            p2_background="",  
             p1_goal=agent1_goal,
             p2_goal=agent2_goal,
         )

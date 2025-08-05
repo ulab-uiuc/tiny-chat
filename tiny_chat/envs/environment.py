@@ -218,10 +218,9 @@ class TinyChatEnvironment:
         return self.turn_number >= self.max_turns
     
     def get_observation(self, agent_name: str) -> Observation:
-        # 获取上一轮对话内容
+        # get last turn
         last_turn = ""
         if self.turn_number > 0 and self.inbox:
-            # 从收件箱中获取上一轮的动作信息
             last_actions = {}
             for source, message in self.inbox:
                 if isinstance(message, AgentAction) and source != 'Environment':
@@ -233,16 +232,14 @@ class TinyChatEnvironment:
         else:
             last_turn = self.background.to_natural_language()
         
-        # 根据智能体名称确定动作掩码索引
-        agent_index = 0  # 默认索引
+        agent_index = 0
         if hasattr(self, 'agents') and self.agents:
             try:
                 agent_index = self.agents.index(agent_name)
             except ValueError:
                 agent_index = 0
         
-        # 确定可用的动作
-        available_actions = ['none']  # 默认只有 'none' 动作
+        available_actions = ['none']
         if hasattr(self, 'action_mask') and len(self.action_mask) > agent_index:
             if self.action_mask[agent_index]:
                 available_actions = list(self.available_action_types)
