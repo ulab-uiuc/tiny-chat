@@ -98,7 +98,7 @@ class ListOfIntOutputParser(OutputParser[list[int]]):
         self.range_of_int = range_of_int
 
     def _get_description_text(self) -> str:
-        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} intergers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by spaces. Don't output anything else. Format example: 1 2 3 4 5"
+        return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} integers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by spaces. Don't output anything else. Format example: 1 2 3 4 5"
 
     def get_format_instructions(self) -> str:
         return "Please output " + self._get_description_text()
