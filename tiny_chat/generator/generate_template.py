@@ -2,7 +2,6 @@ import logging
 import os
 from typing import cast
 
-import gin
 from litellm import acompletion
 from litellm.litellm_core_utils.get_supported_openai_params import (
     get_supported_openai_params,
@@ -11,6 +10,7 @@ from litellm.utils import supports_response_schema
 from pydantic import validate_call
 from rich import print
 from rich.logging import RichHandler
+
 from tiny_chat.generator.output_parsers import (
     EnvResponse,
     OutputParser,
@@ -19,14 +19,15 @@ from tiny_chat.generator.output_parsers import (
     ScriptOutputParser,
     StrOutputParser,
 )
-from tiny_chat.utils import format_docstring
-
-from tiny_chat.messages import ActionType, AgentAction, ScriptBackground
 from tiny_chat.messages import (
+    ActionType,
+    AgentAction,
+    ScriptBackground,
     ScriptInteraction,
     ScriptInteractionReturnType,
 )
 from tiny_chat.profile import BaseEnvironmentProfile, BaseRelationshipProfile
+from tiny_chat.utils import format_docstring
 
 # Configure logger
 log = logging.getLogger('sotopia.generation')
@@ -81,7 +82,6 @@ async def format_bad_output(
     return reformatted_output
 
 
-@gin.configurable
 @validate_call
 async def agenerate(
     model_name: str,
@@ -119,17 +119,17 @@ async def agenerate(
         if not base_url:
             params = get_supported_openai_params(model=model_name)
             assert params is not None
-            assert 'response_format' in params, (
-                'response_format is not supported in this model'
-            )
-            assert supports_response_schema(model=model_name), (
-                'response_schema is not supported in this model'
-            )
+            assert (
+                'response_format' in params
+            ), 'response_format is not supported in this model'
+            assert supports_response_schema(
+                model=model_name
+            ), 'response_schema is not supported in this model'
         messages = [{'role': 'user', 'content': template}]
 
-        assert isinstance(output_parser, PydanticOutputParser), (
-            'structured output only supported in PydanticOutputParser'
-        )
+        assert isinstance(
+            output_parser, PydanticOutputParser
+        ), 'structured output only supported in PydanticOutputParser'
         response = await acompletion(
             model=model_name,
             messages=messages,
@@ -178,7 +178,6 @@ async def agenerate(
     return parsed_result
 
 
-@gin.configurable
 @validate_call
 async def agenerate_env_profile(
     model_name: str,
@@ -238,7 +237,6 @@ async def agenerate_relationship_profile(
     )
 
 
-@gin.configurable
 @validate_call
 async def agenerate_action(
     model_name: str,
@@ -308,7 +306,6 @@ async def agenerate_action(
         return AgentAction(action_type='none', argument='')
 
 
-@gin.configurable
 @validate_call
 async def agenerate_script(
     model_name: str,
