@@ -58,8 +58,8 @@ class ChatServer:
                     model=model,
                     api_key=self.api_key,
                 )
-            # elif agent_type == 'human':
-            #     agent = HumanAgent(name=name, agent_number=agent_number)
+            elif agent_type == 'human':
+                agent = HumanAgent(name=name, agent_number=agent_number)
             else:
                 raise ValueError(f'Unknown agent type: {agent_type}')
 

@@ -40,7 +40,7 @@ class BaseEpisodeLog(BaseModel):
             messages_in_this_turn = []
             if idx == 0:
                 assert len(turn) >= 2, (
-                    'The first turn should have at least environemnt messages'
+                    'The first turn should have at least environment messages'
                 )
                 messages_in_this_turn.append(
                     f"{turn[0][1]}'s perspective (i.e., what {turn[0][1]} knows before the episode starts): {turn[0][2]}"

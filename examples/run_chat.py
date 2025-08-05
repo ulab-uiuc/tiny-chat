@@ -32,12 +32,14 @@ async def main():
     agent_configs = [
         {
             "name": "Alice",
+            "agent_number": 1,
             "type": "llm",
             "model": "gpt-4o-mini",
             "goal": "Be friendly and helpful in the conversation",
         },
         {
             "name": "Bob",
+            "agent_number": 2,
             "type": "llm",
             "model": "gpt-4o-mini",
             "goal": "Ask thoughtful questions and share interesting ideas",
