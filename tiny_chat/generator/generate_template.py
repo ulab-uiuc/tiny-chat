@@ -19,7 +19,7 @@ from tiny_chat.generator.output_parsers import (
     ScriptOutputParser,
     StrOutputParser,
 )
-from tiny_chat.generator.prompts import (
+from tiny_chat.utils.prompt import (
     ACTION_NORMAL_TEMPLATE,
     ACTION_SCRIPT_TEMPLATE,
     BAD_OUTPUT_REFORMAT_TEMPLATE,
