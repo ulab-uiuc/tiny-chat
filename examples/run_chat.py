@@ -6,24 +6,18 @@ Usage: python scripts/run_chat.py
 
 import asyncio
 import os
-import sys
-from pathlib import Path
 
-# Add the project root to Python path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from tiny_chat.server import ChatServer
 from tiny_chat.messages import ChatBackground
+from tiny_chat.server import ChatServer
 
 
 async def main():
     """Run a simple multi-agent conversation"""
 
     # Get API key from environment variable
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
-        print("Warning: OPENAI_API_KEY not set. Some features may not work.")
+        print('Warning: OPENAI_API_KEY not set. Some features may not work.')
 
     # Create chat server
     server = ChatServer(api_key=api_key)
@@ -31,32 +25,32 @@ async def main():
     # Define agent configurations
     agent_configs = [
         {
-            "name": "Alice",
-            "type": "llm",
-            "model": "gpt-4o-mini",
-            "goal": "Be friendly and helpful in the conversation",
+            'name': 'Alice',
+            'type': 'llm',
+            'model': 'gpt-4o-mini',
+            'goal': 'Be friendly and helpful in the conversation',
         },
         {
-            "name": "Bob",
-            "type": "llm",
-            "model": "gpt-4o-mini",
-            "goal": "Ask thoughtful questions and share interesting ideas",
+            'name': 'Bob',
+            'type': 'llm',
+            'model': 'gpt-4o-mini',
+            'goal': 'Ask thoughtful questions and share interesting ideas',
         },
     ]
 
     # Create a simple background
     background = ChatBackground(
-        scenario="Two friends meeting at a coffee shop",
-        p1_background="Alice is a software engineer who loves hiking",
-        p2_background="Bob is a teacher who enjoys reading science fiction",
-        p1_goal="Have a pleasant conversation about weekend plans",
-        p2_goal="Discuss recent books and outdoor activities",
-        p1_name="Alice",
-        p2_name="Bob",
+        scenario='Two friends meeting at a coffee shop',
+        p1_background='Alice is a software engineer who loves hiking',
+        p2_background='Bob is a teacher who enjoys reading science fiction',
+        p1_goal='Have a pleasant conversation about weekend plans',
+        p2_goal='Discuss recent books and outdoor activities',
+        p1_name='Alice',
+        p2_name='Bob',
     )
 
-    print("Starting multi-agent conversation...")
-    print("=" * 50)
+    print('Starting multi-agent conversation...')
+    print('=' * 50)
 
     # Run the conversation
     await server.run_conversation(
@@ -67,5 +61,5 @@ async def main():
     )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())

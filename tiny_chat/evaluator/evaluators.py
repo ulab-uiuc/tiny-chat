@@ -5,11 +5,7 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, validate_call
 
-from tiny_chat.messages import (
-    AgentAction,
-    Message,
-    ScriptEnvironmentResponse,
-)
+from tiny_chat.messages import AgentAction, Message, ScriptEnvironmentResponse
 
 log = logging.getLogger('evaluators')
 
@@ -177,10 +173,10 @@ def _reduce(
     scores: list[float | int] = []
     for k, v in responses_dict.items():
         if k == 'terminated':
-            assert all([isinstance(x, bool) for x in v])
+            assert all(isinstance(x, bool) for x in v)
             reduced_dict[k] = any(v)
         else:
-            assert all([isinstance(x, (float, int)) for x in v])
+            assert all(isinstance(x, float | int) for x in v)
             reduced_dict[k] = sum(v) / len(v)
             scores.append(reduced_dict[k])
     if len(scores) and 'overall_score' not in responses_dict:
