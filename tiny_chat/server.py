@@ -5,12 +5,11 @@ Simple Chat Server - Run multi-agent conversations
 import asyncio
 
 from .agents import HumanAgent, LLMAgent
-from .environment import ChatEnvironment
-from .evaluators import (
+from .envs import TinyChatEnvironment
+from .evaluator import (
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
 )
-from .generator import MessageGenerator
 from .messages import ChatBackground
 
 
@@ -19,7 +18,6 @@ class ChatServer:
 
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
-        self.generator = MessageGenerator(api_key=api_key)
 
     async def run_conversation(
         self,
@@ -38,8 +36,8 @@ class ChatServer:
             terminal_evaluators.append(EpisodeLLMEvaluator(model_name='gpt-4o-mini'))
 
         # Create environment
-        env = ChatEnvironment(
-            background=background,
+        env = TinyChatEnvironment(
+            background_class=ChatBackground,
             evaluators=evaluators,
             terminal_evaluators=terminal_evaluators,
         )
@@ -55,13 +53,13 @@ class ChatServer:
             if agent_type == 'llm':
                 model = config.get('model', 'gpt-4o-mini')
                 agent = LLMAgent(
-                    name=name,
+                    agent_name=name,
                     agent_number=agent_number,
                     model=model,
                     api_key=self.api_key,
                 )
-            elif agent_type == 'human':
-                agent = HumanAgent(name=name, agent_number=agent_number)
+            # elif agent_type == 'human':
+            #     agent = HumanAgent(name=name, agent_number=agent_number)
             else:
                 raise ValueError(f'Unknown agent type: {agent_type}')
 
@@ -70,15 +68,15 @@ class ChatServer:
                 agent.goal = config['goal']
             elif background and agent_type == 'llm':
                 # Generate goal from background
-                agent.goal = await self.generator.generate_goal(
-                    background.to_natural_language()
+                agent.goal = await agenerate_goal(
+                    model_name="gpt-4o-mini",
+                    background=background.to_natural_language(),
                 )
 
             agents[name] = agent
-            env.add_agent(agent)
 
-        # Reset environment
-        env.reset()
+        # Reset environment with agents
+        env.reset(agents=agents)
 
         print('=== Conversation Starting ===')
         if background:
@@ -100,7 +98,7 @@ class ChatServer:
                 print(f'{name}: {action.to_natural_language()}')
 
             # Execute step
-            await env.step(actions)
+            await env.astep(actions)
 
         print('\n=== Conversation Ended ===')
         print(f'Total turns: {env.get_turn_number()}')

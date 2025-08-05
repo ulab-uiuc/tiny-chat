@@ -3,7 +3,7 @@ from typing import Literal, cast
 
 from pydantic import BaseModel, Field
 
-from .utils import format_docstring
+from tiny_chat.utils import format_docstring
 
 ActionType = Literal['none', 'speak', 'non-verbal communication', 'action', 'leave']
 
@@ -79,7 +79,22 @@ class ScriptBackground(Message):
 class ChatBackground(ScriptBackground):
     """Alias for ScriptBackground for better naming in tiny_chat context"""
 
-    pass
+    def create_two_agent_background(
+        scenario: str,
+        agent1_name: str,
+        agent2_name: str,
+        agent1_goal: str,
+        agent2_goal: str,
+    ) -> 'ChatBackground':
+        return ChatBackground(
+            scenario=scenario,
+            p1_name=agent1_name,
+            p2_name=agent2_name,
+            p1_background="",  # 默认空背景
+            p2_background="",  # 默认空背景
+            p1_goal=agent1_goal,
+            p2_goal=agent2_goal,
+        )
 
 
 class ScriptEnvironmentResponse(Message):

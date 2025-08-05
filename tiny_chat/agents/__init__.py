@@ -1,3 +1,6 @@
-from .agents import LLMAgent
+from .agents import LLMAgent, HumanAgent
 
-__all__ = ['LLMAgent']
+__all__ = [
+    'LLMAgent',
+    'HumanAgent',
+]

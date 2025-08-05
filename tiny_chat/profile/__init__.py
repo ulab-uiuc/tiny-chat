@@ -1,3 +1,11 @@
-from .profile import AgentProfile, EnvironmentProfile, RelationshipProfile
+from .profile import (
+    BaseAgentProfile,
+    BaseEnvironmentProfile,
+    BaseRelationshipProfile,
+)
 
-__all__ = ['AgentProfile', 'EnvironmentProfile', 'RelationshipProfile']
+__all__ = [
+    'BaseAgentProfile',
+    'BaseEnvironmentProfile',
+    'BaseRelationshipProfile',
+]
