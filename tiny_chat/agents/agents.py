@@ -24,6 +24,7 @@ class LLMAgent:
         self.agent_profile = agent_profile
         self.message_history: list[Message] = []
         self.script_like = script_like
+
     @property
     def goal(self) -> str:
         """Get the agent's goal"""
@@ -81,6 +82,7 @@ class LLMAgent:
     def receive_message(self, source: str, message: Message) -> None:
         """Receive a message and add to history"""
         self.message_history.append(message)
+
 
 class HumanAgent:
     pass

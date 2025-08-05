@@ -22,9 +22,9 @@ class BaseEpisodeLog(BaseModel):
     def agent_number_message_number_reward_number_turn_number_match(self) -> Self:
         agent_number = len(self.agents)
 
-        assert len(self.rewards) == agent_number, (
-            f'Number of agents in rewards {len(self.rewards)} and agents {agent_number} do not match'
-        )
+        assert (
+            len(self.rewards) == agent_number
+        ), f'Number of agents in rewards {len(self.rewards)} and agents {agent_number} do not match'
         return self
 
     def render_for_humans(self) -> tuple[list[AgentProfile], list[str]]:
@@ -39,9 +39,9 @@ class BaseEpisodeLog(BaseModel):
         for idx, turn in enumerate(self.messages):
             messages_in_this_turn = []
             if idx == 0:
-                assert len(turn) >= 2, (
-                    'The first turn should have at least environemnt messages'
-                )
+                assert (
+                    len(turn) >= 2
+                ), 'The first turn should have at least environemnt messages'
                 messages_in_this_turn.append(
                     f"{turn[0][1]}'s perspective (i.e., what {turn[0][1]} knows before the episode starts): {turn[0][2]}"
                 )

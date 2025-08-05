@@ -4,12 +4,10 @@ Simple Chat Server - Run multi-agent conversations
 
 import asyncio
 
-from .agents import HumanAgent, LLMAgent
+from .agents import LLMAgent
 from .envs import TinyChatEnvironment
-from .evaluator import (
-    EpisodeLLMEvaluator,
-    RuleBasedTerminatedEvaluator,
-)
+from .evaluator import EpisodeLLMEvaluator, RuleBasedTerminatedEvaluator
+from .generator.generate_template import agenerate_goal
 from .messages import ChatBackground
 
 
@@ -69,7 +67,7 @@ class ChatServer:
             elif background and agent_type == 'llm':
                 # Generate goal from background
                 agent.goal = await agenerate_goal(
-                    model_name="gpt-4o-mini",
+                    model_name='gpt-4o-mini',
                     background=background.to_natural_language(),
                 )
 
