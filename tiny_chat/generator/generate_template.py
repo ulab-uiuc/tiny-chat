@@ -19,6 +19,19 @@ from tiny_chat.generator.output_parsers import (
     ScriptOutputParser,
     StrOutputParser,
 )
+from tiny_chat.generator.prompts import (
+    ACTION_NORMAL_TEMPLATE,
+    ACTION_SCRIPT_TEMPLATE,
+    BAD_OUTPUT_REFORMAT_TEMPLATE,
+    ENV_PROFILE_TEMPLATE,
+    FIRST_PERSON_NARRATIVE_TEMPLATE,
+    GOAL_TEMPLATE,
+    INIT_PROFILE_TEMPLATE,
+    RELATIONSHIP_PROFILE_TEMPLATE,
+    SECOND_PERSON_NARRATIVE_TEMPLATE,
+    SCRIPT_FULL_TEMPLATE,
+    SCRIPT_SINGLE_STEP_TEMPLATE,
+)
 from tiny_chat.utils import format_docstring
 
 from tiny_chat.messages import ActionType, AgentAction, ScriptBackground
@@ -56,14 +69,7 @@ async def format_bad_output(
     model_name: str,
     use_fixed_model_version: bool = True,
 ) -> str:
-    template = """
-    Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
-    Original string: {ill_formed_output}
-
-    Format instructions: {format_instructions}
-
-    Please only generate the JSON:
-    """
+    template = BAD_OUTPUT_REFORMAT_TEMPLATE
 
     input_values = {
         'ill_formed_output': ill_formed_output,
@@ -193,13 +199,7 @@ async def agenerate_env_profile(
     """
     return await agenerate(
         model_name=model_name,
-        template="""Please generate scenarios and goals based on the examples below as well as the inspirational prompt, when creating the goals, try to find one point that both sides may not agree upon initially and need to collaboratively resolve it.
-        Examples:
-        {examples}
-        Inspirational prompt: {inspiration_prompt}
-        Please use the following format:
-        {format_instructions}
-        """,
+        template=ENV_PROFILE_TEMPLATE,
         input_values=dict(
             inspiration_prompt=inspiration_prompt,
             examples=examples,
@@ -224,11 +224,7 @@ async def agenerate_relationship_profile(
     agent_profile = '\n'.join(agents_profiles)
     return await agenerate(
         model_name=model_name,
-        template="""Please generate relationship between two agents based on the agents' profiles below. Note that you generate
-        {agent_profile}
-        Please use the following format:
-        {format_instructions}
-        """,
+        template=RELATIONSHIP_PROFILE_TEMPLATE,
         input_values=dict(
             agent_profile=agent_profile,
         ),
@@ -258,37 +254,10 @@ async def agenerate_action(
     try:
         if script_like:
             # model as playwright
-            template = """
-                Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
-                You can find {agent}'s background and goal in the 'Here is the context of the interaction' field.
-                You should try your best to achieve {agent}'s goal in a way that align with their character traits.
-                Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
-                {history}.
-                The script has proceeded to Turn #{turn_number}. Current available action types are
-                {action_list}.
-                Note: The script can be ended if 1. one agent have achieved social goals, 2. this conversation makes the agent uncomfortable, 3. the agent find it uninteresting/you lose your patience, 4. or for other reasons you think it should stop.
-
-                Please only generate a JSON string including the action type and the argument.
-                Your action should follow the given format:
-                {format_instructions}
-            """
+            template = ACTION_SCRIPT_TEMPLATE
         else:
             # Normal case, model as agent
-            template = """
-                Imagine you are {agent}, your task is to act/speak as {agent} would, keeping in mind {agent}'s social goal.
-                You can find {agent}'s goal (or background) in the 'Here is the context of the interaction' field.
-                Note that {agent}'s goal is only visible to you.
-                You should try your best to achieve {agent}'s goal in a way that align with their character traits.
-                Additionally, maintaining the conversation's naturalness and realism is essential (e.g., do not repeat what other people has already said before).
-                {history}.
-                You are at Turn #{turn_number}. Your available action types are
-                {action_list}.
-                Note: You can "leave" this conversation if 1. you have achieved your social goals, 2. this conversation makes you uncomfortable, 3. you find it uninteresting/you lose your patience, 4. or for other reasons you want to leave.
-
-                Please only generate a JSON string including the action type and the argument.
-                Your action should follow the given format:
-                {format_instructions}
-            """
+            template = ACTION_NORMAL_TEMPLATE
         return await agenerate(
             model_name=model_name,
             template=template,
@@ -331,17 +300,7 @@ async def agenerate_script(
         if single_step:
             return await agenerate(
                 model_name=model_name,
-                template="""Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
-
-                Here are the conversation background and history:
-                {background}
-                {history}
-
-                Remember that you are an independent scriptwriter and should finish the script by yourself.
-                The output should only contain the script following the format instructions, with no additional comments or text.
-
-                Here are the format instructions:
-                {format_instructions}""",
+                template=SCRIPT_SINGLE_STEP_TEMPLATE,
                 input_values=dict(
                     background=background.to_natural_language(),
                     history=history,
@@ -360,14 +319,7 @@ async def agenerate_script(
         else:
             return await agenerate(
                 model_name=model_name,
-                template="""
-                Please write the script between two characters based on their social goals with a maximum of 20 turns.
-
-                {background}
-                Your action should follow the given format:
-                {format_instructions}
-                Remember that you are an independent scriptwriter and should finish the script by yourself.
-                The output should only contain the script following the format instructions, with no additional comments or text.""",
+                template=SCRIPT_FULL_TEMPLATE,
                 input_values=dict(
                     background=background.to_natural_language(),
                 ),
@@ -418,21 +370,7 @@ async def agenerate_init_profile(
     """
     return await agenerate(
         model_name=model_name,
-        template="""Please expand a fictional background for {name}. Here is the basic information:
-            {name}'s age: {age}
-            {name}'s gender identity: {gender_identity}
-            {name}'s pronouns: {pronoun}
-            {name}'s occupation: {occupation}
-            {name}'s big 5 personality traits: {bigfive}
-            {name}'s moral Foundation: think {mft} is more important than others
-            {name}'s Schwartz portrait value: {schwartz}
-            {name}'s decision-making style: {decision_style}
-            {name}'s secret: {secret}
-            Include the previous information in the background.
-            Then expand the personal backgrounds with concrete details (e.g, look, family, hobbies, friends and etc.)
-            For the personality and values (e.g., MBTI, moral foundation, and etc.),
-            remember to use examples and behaviors in the person's life to demonstrate it.
-            """,
+        template=INIT_PROFILE_TEMPLATE,
         input_values=dict(
             name=basic_info['name'],
             age=basic_info['age'],
@@ -462,9 +400,7 @@ async def convert_narratives(
     if narrative == 'first':
         return await agenerate(
             model_name=model_name,
-            template="""Please convert the following text into a first-person narrative.
-            e.g, replace name, he, she, him, her, his, and hers with I, me, my, and mine.
-            {text}""",
+            template=FIRST_PERSON_NARRATIVE_TEMPLATE,
             input_values=dict(text=text),
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
@@ -473,9 +409,7 @@ async def convert_narratives(
     elif narrative == 'second':
         return await agenerate(
             model_name=model_name,
-            template="""Please convert the following text into a second-person narrative.
-            e.g, replace name, he, she, him, her, his, and hers with you, your, and yours.
-            {text}""",
+            template=SECOND_PERSON_NARRATIVE_TEMPLATE,
             input_values=dict(text=text),
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
@@ -497,9 +431,7 @@ async def agenerate_goal(
     """
     return await agenerate(
         model_name=model_name,
-        template="""Please generate your goal based on the background:
-            {background}
-            """,
+        template=GOAL_TEMPLATE,
         input_values=dict(background=background),
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
