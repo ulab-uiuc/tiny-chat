@@ -70,6 +70,7 @@ Tiny Chat 是一个受 [Sotopia](https://github.com/sotopia-lab/sotopia) 启发�
 - **用途**: 提供辅助函数和工具
 - **核心组件**:
   - `format_docstring.py`: 文档字符串格式化工具
+  - `prompt.py`: 所有的提示词 & 提示句子
 - **功能**: 代码格式化和文档辅助
 
 #### 📁 `server.py` - 聊天服务器

@@ -70,6 +70,7 @@ Tiny Chat is a simplified multi-agent chat system inspired by [Sotopia](https://
 - **Purpose**: Provides helper functions and utilities
 - **Key Components**:
   - `format_docstring.py`: Document string formatting utilities
+  - `prompt.py`: All prompt extracted in this file
 - **Features**: Code formatting and documentation helpers
 
 #### 📁 `server.py` - Chat Server
