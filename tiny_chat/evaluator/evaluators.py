@@ -5,7 +5,7 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, validate_call
 
-from .messages import (
+from tiny_chat.messages import (
     AgentAction,
     Message,
     ScriptEnvironmentResponse,
@@ -98,11 +98,11 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     def __init__(
         self,
         model_name: str,
-        response_format_class: type[EvaluationForTwoAgents[T_eval_dim]],
+        # response_format_class: type[EvaluationForTwoAgents[T_eval_dim]],
     ) -> None:
         self.model_name = model_name
         self.prompt = ''
-        self.response_format_class = response_format_class
+        # self.response_format_class = response_format_class
 
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
@@ -155,7 +155,7 @@ class EvaluationDimension(BaseModel):
     pass
 
 
-class SotopiaDimensions(BaseModel):
+class TinyChatDimensions(BaseModel):
     """Evaluation dimensions used in Sotopia"""
 
     overall_score: tuple[str, float] = ('Overall score', 0.0)

@@ -11,7 +11,7 @@ from litellm.utils import supports_response_schema
 from pydantic import validate_call
 from rich import print
 from rich.logging import RichHandler
-from sotopia.generation_utils.output_parsers import (
+from tiny_chat.generator.output_parsers import (
     EnvResponse,
     OutputParser,
     OutputType,
@@ -19,14 +19,14 @@ from sotopia.generation_utils.output_parsers import (
     ScriptOutputParser,
     StrOutputParser,
 )
-from sotopia.utils import format_docstring
+from tiny_chat.utils import format_docstring
 
 from tiny_chat.messages import ActionType, AgentAction, ScriptBackground
-from tiny_chat.messages.message_classes import (
+from tiny_chat.messages import (
     ScriptInteraction,
     ScriptInteractionReturnType,
 )
-from tiny_chat.profile import EnvironmentProfile, RelationshipProfile
+from tiny_chat.profile import BaseEnvironmentProfile, BaseRelationshipProfile
 
 # Configure logger
 log = logging.getLogger('sotopia.generation')
@@ -187,7 +187,7 @@ async def agenerate_env_profile(
     temperature: float = 0.7,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
-) -> EnvironmentProfile:
+) -> BaseEnvironmentProfile:
     """
     Using langchain to generate the background
     """
@@ -204,7 +204,7 @@ async def agenerate_env_profile(
             inspiration_prompt=inspiration_prompt,
             examples=examples,
         ),
-        output_parser=PydanticOutputParser(pydantic_object=EnvironmentProfile),
+        output_parser=PydanticOutputParser(pydantic_object=BaseEnvironmentProfile),
         temperature=temperature,
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
@@ -217,7 +217,7 @@ async def agenerate_relationship_profile(
     agents_profiles: list[str],
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
-) -> tuple[RelationshipProfile, str]:
+) -> tuple[BaseRelationshipProfile, str]:
     """
     Using langchain to generate the background
     """
@@ -232,7 +232,7 @@ async def agenerate_relationship_profile(
         input_values=dict(
             agent_profile=agent_profile,
         ),
-        output_parser=PydanticOutputParser(pydantic_object=RelationshipProfile),
+        output_parser=PydanticOutputParser(pydantic_object=BaseRelationshipProfile),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
     )

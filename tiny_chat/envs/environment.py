@@ -6,7 +6,7 @@ from typing import Any, Literal, TypeVar
 
 from pydantic import validate_call
 
-from tiny_chat.evaluators import Evaluator, unweighted_aggregate_evaluate
+from tiny_chat.evaluator import Evaluator, unweighted_aggregate_evaluate
 from tiny_chat.messages import (
     ActionType,
     AgentAction,
@@ -211,6 +211,45 @@ class TinyChatEnvironment:
                 ),
             ),
         }
+    def get_turn_number(self) -> int:
+        return self.turn_number
+    
+    def is_terminated(self) -> bool:
+        return self.turn_number >= self.max_turns
+    
+    def get_observation(self, agent_name: str) -> Observation:
+        # get last turn
+        last_turn = ""
+        if self.turn_number > 0 and self.inbox:
+            last_actions = {}
+            for source, message in self.inbox:
+                if isinstance(message, AgentAction) and source != 'Environment':
+                    last_actions[source] = message
+            if last_actions:
+                last_turn = _actions_to_natural_language(last_actions)
+            else:
+                last_turn = self.background.to_natural_language()
+        else:
+            last_turn = self.background.to_natural_language()
+        
+        agent_index = 0
+        if hasattr(self, 'agents') and self.agents:
+            try:
+                agent_index = self.agents.index(agent_name)
+            except ValueError:
+                agent_index = 0
+        
+        available_actions = ['none']
+        if hasattr(self, 'action_mask') and len(self.action_mask) > agent_index:
+            if self.action_mask[agent_index]:
+                available_actions = list(self.available_action_types)
+        
+        obs = Observation(
+            last_turn=last_turn,
+            turn_number=self.turn_number,
+            available_actions=available_actions,
+        )
+        return obs
 
     def _get_agent_background(self, agent: Any, agent_id: int) -> str:
         """Extract background information from agent"""
