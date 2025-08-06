@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import cast
 
@@ -9,7 +8,6 @@ from litellm.litellm_core_utils.get_supported_openai_params import (
 from litellm.utils import supports_response_schema
 from pydantic import validate_call
 from rich import print
-from rich.logging import RichHandler
 
 from tiny_chat.generator.output_parsers import (
     EnvResponse,
@@ -28,25 +26,8 @@ from tiny_chat.messages import (
 )
 from tiny_chat.profile import BaseEnvironmentProfile, BaseRelationshipProfile
 from tiny_chat.utils import format_docstring
+from tiny_chat.utils.logger import logger as log
 
-# Configure logger
-log = logging.getLogger('sotopia.generation')
-log.setLevel(logging.INFO)
-
-# Create console handler with rich formatting
-console_handler = RichHandler(rich_tracebacks=True)
-console_handler.setLevel(logging.INFO)
-
-# Create formatter
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
-)
-console_handler.setFormatter(formatter)
-
-# Add handler to logger
-log.addHandler(console_handler)
-
-# subject to future OpenAI changes
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = 'gpt-4o-mini'
 
 
@@ -94,14 +75,11 @@ async def agenerate(
     use_fixed_model_version: bool = True,
 ) -> OutputType:
     """Generate text using LiteLLM instead of Langchain."""
-    # Format template with input values
     if 'format_instructions' not in input_values:
         input_values['format_instructions'] = output_parser.get_format_instructions()
 
-    # Process template
     template = format_docstring(template)
 
-    # Replace template variables
     for key, value in input_values.items():
         template = template.replace(f'{{{key}}}', str(value))
 
@@ -134,7 +112,7 @@ async def agenerate(
             model=model_name,
             messages=messages,
             response_format=output_parser.pydantic_object,
-            drop_params=True,  # drop params to avoid model error if the model does not support it
+            drop_params=True,
             temperature=temperature,
             base_url=base_url,
             api_key=api_key,
@@ -164,7 +142,6 @@ async def agenerate(
             f'[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse',
             extra={'markup': True},
         )
-        # Handle bad output reformatting
         reformat_result = await format_bad_output(
             result,
             output_parser.get_format_instructions(),

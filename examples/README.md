@@ -15,16 +15,19 @@ examples/
 ## Running Examples
 
 ### Two-Agent Conversation
+
 ```bash
 python examples/two_agents_chat.py
 ```
 
 ### Human-AI Interactive Chat
+
 ```bash
 python examples/human_agent_chat.py
 ```
 
 ### Multi-Agent Conversation
+
 ```bash
 python examples/multi_agents_chat.py
 ```
@@ -48,7 +51,7 @@ agent_configs = [
         "goal": "Your Agent 1 Goal",
     },
     {
-        "name": "Your Agent 2 Name", 
+        "name": "Your Agent 2 Name",
         "agent_number": 2,
         "type": "llm",
         "model": "gpt-4o-mini",
@@ -60,7 +63,7 @@ agent_configs = [
 background = TwoAgentChatBackground(
     scenario="Your conversation scenario description",
     p1_background="Agent 1 background information",
-    p2_background="Agent 2 background information", 
+    p2_background="Agent 2 background information",
     p1_goal="Agent 1 specific goal",
     p2_goal="Agent 2 specific goal",
     p1_name="Agent 1 Name",
@@ -124,21 +127,21 @@ agent_configs = [
         "goal": "Agent 1 Goal"
     },
     {
-        "name": "Agent 2 Name", 
+        "name": "Agent 2 Name",
         "type": "llm",
         "model": "gpt-4o-mini",
         "goal": "Agent 2 Goal"
     },
     {
         "name": "Agent 3 Name",
-        "type": "llm", 
+        "type": "llm",
         "model": "gpt-4o-mini",
         "goal": "Agent 3 Goal"
     }
 ]
 
 background = MultiAgentChatBackground(
-    scenario="Your multi-agent scenario description", 
+    scenario="Your multi-agent scenario description",
     agent_configs=[
     {
         'name': 'Agent 1 Name',
@@ -147,7 +150,7 @@ background = MultiAgentChatBackground(
     },
     {
         'name': 'Agent 2 Name',
-        'background': 'Agent 2 detailed background', 
+        'background': 'Agent 2 detailed background',
         'goal': 'Agent 2 specific goal'
     },
     {

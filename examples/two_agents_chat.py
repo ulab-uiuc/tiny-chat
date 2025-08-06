@@ -6,15 +6,15 @@ Usage: python scripts/run_chat.py
 
 import asyncio
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
+
+from tiny_chat.messages import TwoAgentChatBackground
+from tiny_chat.utils.server import TinyChatServer
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from tiny_chat.server import ChatServer
-from tiny_chat.messages import TwoAgentChatBackground
 
 
 async def main():
@@ -26,35 +26,35 @@ async def main():
         print('Warning: OPENAI_API_KEY not set. Some features may not work.')
 
     # Create chat server
-    server = ChatServer(api_key=api_key)
+    server = TinyChatServer(api_key=api_key)
 
     # Define agent configurations
     agent_configs = [
         {
-            "name": "Alice",
-            "agent_number": 1,
-            "type": "llm",
-            "model": "gpt-4o-mini",
-            "goal": "Be friendly and helpful in the conversation",
+            'name': 'Alice',
+            'agent_number': 1,
+            'type': 'llm',
+            'model': 'gpt-4o-mini',
+            'goal': 'Be friendly and helpful in the conversation',
         },
         {
-            "name": "Bob",
-            "agent_number": 2,
-            "type": "llm",
-            "model": "gpt-4o-mini",
-            "goal": "Ask thoughtful questions and share interesting ideas",
+            'name': 'Bob',
+            'agent_number': 2,
+            'type': 'llm',
+            'model': 'gpt-4o-mini',
+            'goal': 'Ask thoughtful questions and share interesting ideas',
         },
     ]
 
     # Create a simple background
     background = TwoAgentChatBackground(
-        scenario="Two friends meeting at a coffee shop",
-        p1_background="Alice is a software engineer who loves hiking",
-        p2_background="Bob is a teacher who enjoys reading science fiction",
-        p1_goal="Have a pleasant conversation about weekend plans",
-        p2_goal="Discuss recent books and outdoor activities",
-        p1_name="Alice",
-        p2_name="Bob",
+        scenario='Two friends meeting at a coffee shop',
+        p1_background='Alice is a software engineer who loves hiking',
+        p2_background='Bob is a teacher who enjoys reading science fiction',
+        p1_goal='Have a pleasant conversation about weekend plans',
+        p2_goal='Discuss recent books and outdoor activities',
+        p1_name='Alice',
+        p2_name='Bob',
     )
 
     print('Starting multi-agent conversation...')

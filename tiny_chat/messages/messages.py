@@ -48,6 +48,7 @@ class ScriptBackground(Message):
 
 class TwoAgentChatBackground(ScriptBackground):
     """Alias for ScriptBackground for better naming in tiny_chat context"""
+
     scenario: str = Field(description='scenario of the episode')
     p1_name: str = Field(description='name of participant 1')
     p2_name: str = Field(description='name of participant 2')
@@ -81,25 +82,27 @@ class TwoAgentChatBackground(ScriptBackground):
             """
             )
 
+
 class MultiAgentChatBackground(ScriptBackground):
     scenario: str = Field(description='scenario of the episode')
     agent_configs: list[dict] = Field(description='configurations of the agents')
 
     def to_natural_language(self) -> str:
-        agent_info = ""
+        agent_info = ''
         for i, config in enumerate(self.agent_configs):
             agent_info += f"\nAgent {i+1} ({config.get('name', f'Agent{i+1}')}):"
             if 'background' in config:
                 agent_info += f"\n  Background: {config['background']}"
             if 'goal' in config:
                 agent_info += f"\n  Goal: {config['goal']}"
-        
+
         return format_docstring(
             f"""Here is the context of this interaction:
             Scenario: {self.scenario}
             Participants: {agent_info}
             """
         )
+
 
 class ScriptEnvironmentResponse(Message):
     terminated: bool = Field(
@@ -288,7 +291,6 @@ class ScriptInteraction(Message):
     ) -> dict[str, str | int | ActionType | None]:
         """Parse a single dialogue string and return a dictionary with turn, name, action, and argument."""
 
-        # Match the turn number and name. Assume all agent name starts with a capital letter and is followed by lowercase letters
         match_turn_name = re.match(
             r"Turn #?(\d+):?\s*\n((?:[A-Z]['a-z]* ?)+)", dialogue
         )
@@ -299,11 +301,8 @@ class ScriptInteraction(Message):
             )
 
         turn, name = match_turn_name.groups()
-        action_content = dialogue[
-            len(match_turn_name.group(0)) :
-        ].strip()  # Extract the action content
+        action_content = dialogue[len(match_turn_name.group(0)) :].strip()
 
-        # Check for different action types
         if 'did nothing' in action_content:
             action, argument = 'none', ''
         elif match := re.match(r'said: "(.*?)"', action_content):
@@ -317,7 +316,6 @@ class ScriptInteraction(Message):
         ):
             action, argument = match.groups()
         elif 'left the conversation' in action_content:
-            # TODO Make it more elegant to handle the situation of `left the conversation.`
             action, argument = 'leave', ''
         else:
             action, argument = None, None
@@ -332,15 +330,10 @@ class ScriptInteraction(Message):
 
     def split_by_turn(self, input_string: str) -> list[str]:
         """Split the input dialogue string by turn and return a list of dialogues."""
-        # Split using 'Turn #' as delimiter, but keep the delimiter in the results
         dialogues = re.split(r'(?=Turn #?\d+)', input_string)
-        # Remove any empty strings and strip whitespace
         dialogues = [dialogue.strip() for dialogue in dialogues if dialogue.strip()]
         dialogues = [dialogue for dialogue in dialogues if dialogue.startswith('Turn')]
-        # Change from Turn #x to Turn (#)x (# is optional)
-        dialogues[-1] = '\n'.join(
-            dialogues[-1].split('\n')[:2]
-        )  # Discard further input in the last turn
+        dialogues[-1] = '\n'.join(dialogues[-1].split('\n')[:2])
 
         for dialogue in dialogues:
             # TODO this is current workaround for the issue of multiple agents in one turn

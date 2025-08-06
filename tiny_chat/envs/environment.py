@@ -11,10 +11,10 @@ from tiny_chat.messages import (
     ActionType,
     AgentAction,
     Message,
+    MultiAgentChatBackground,
     Observation,
     ScriptBackground,
     SimpleMessage,
-    MultiAgentChatBackground,
 )
 
 TBackground = TypeVar('TBackground', bound=ScriptBackground)
@@ -29,15 +29,6 @@ DEFAULT_ACTION_TYPES: set[ActionType] = {
 }
 
 
-# Default action types available to agents
-DEFAULT_ACTION_TYPES: set[ActionType] = {
-    'none',
-    'speak',
-    'non-verbal communication',
-    'action',
-    'leave',
-}
-
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     action_str = ''
     for agent, action in actions.items():
@@ -48,21 +39,23 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
             action_str += f'{agent} {action.to_natural_language()}'
     return action_str
 
+
 class BaseChatEnivronment:
     def reset(self, **kwargs):
         pass
-    
+
     def step(self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]):
         pass
-    
+
     def get_observation(self, agent_name: str) -> Observation:
         pass
-    
+
     def is_terminated(self) -> bool:
         pass
-    
+
     def get_turn_number(self) -> int:
         pass
+
 
 class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
     def __init__(
@@ -594,16 +587,17 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
     def close(self) -> None:
         pass
 
+
 class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
     def __init__(
         self,
-        available_action_types: set[ActionType] = set(
-            ['none', 'speak', 'non-verbal communication', 'action', 'leave']
-        ),
-        action_order: Literal['simultaneous', 'round-robin', 'sequential', 'random'] = 'sequential',
-        evaluators: list[Evaluator] = [],
+        available_action_types: set[ActionType] = DEFAULT_ACTION_TYPES,
+        action_order: Literal[
+            'simultaneous', 'round-robin', 'sequential', 'random'
+        ] = 'sequential',
+        evaluators: list[Evaluator] | None = None,
         model_name: str = 'gpt-4o-mini',
-        terminal_evaluators: list[Evaluator] = [],
+        terminal_evaluators: list[Evaluator] | None = None,
         background_class: type[TBackground] | None = None,
         max_turns: int = 20,
     ) -> None:
@@ -631,8 +625,8 @@ class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
         self.available_action_types = list(available_action_types)
         self.action_order = action_order
         self.action_mask: list[bool] = []
-        self.evaluators = evaluators
-        self.terminal_evaluators = terminal_evaluators
+        self.evaluators = evaluators or []
+        self.terminal_evaluators = terminal_evaluators or []
         self.model_name = model_name
         self.turn_number = 0
         self.max_turns = max_turns
@@ -680,7 +674,8 @@ class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
                 turn_number=0,
                 available_actions=(
                     list(self.available_action_types)
-                    if agent_index < len(self.action_mask) and self.action_mask[agent_index]
+                    if agent_index < len(self.action_mask)
+                    and self.action_mask[agent_index]
                     else ['none']
                 ),
             )
@@ -714,20 +709,20 @@ class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
     def get_observation(self, agent_name: str) -> Observation:
         """Get the current observation for a specific agent."""
         if agent_name not in self.agent_names:
-            raise ValueError(f"Agent {agent_name} not found in environment")
+            raise ValueError(f'Agent {agent_name} not found in environment')
 
         # Build the last turn description from recent actions
-        last_turn = ""
+        last_turn = ''
         if self.inbox and self.turn_number > 0:
             recent_actions = []
-            for source, message in self.inbox[-len(self.agent_names):]:
+            for source, message in self.inbox[-len(self.agent_names) :]:
                 if isinstance(message, AgentAction) and message.action_type != 'none':
-                    recent_actions.append(f"{source} {message.to_natural_language()}")
-            
+                    recent_actions.append(f'{source} {message.to_natural_language()}')
+
             if recent_actions:
-                last_turn = "; ".join(recent_actions)
+                last_turn = '; '.join(recent_actions)
             else:
-                last_turn = "No recent actions"
+                last_turn = 'No recent actions'
         else:
             last_turn = self.background.to_natural_language()
 
@@ -764,7 +759,7 @@ class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
             actions = {
                 agent: AgentAction(
                     action_type=action_dict['action_type'],
-                    argument=action_dict.get('argument', '')
+                    argument=action_dict.get('argument', ''),
                 )
                 for agent, action_dict in actions.items()
             }
@@ -775,11 +770,13 @@ class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
 
         # Update turn number and action mask
         self.turn_number += 1
-        
+
         # Update current agent index for sequential ordering
         if self.action_order == 'sequential':
-            self.current_agent_index = (self.current_agent_index + 1) % len(self.agent_names)
-        
+            self.current_agent_index = (self.current_agent_index + 1) % len(
+                self.agent_names
+            )
+
         self._update_action_mask()
 
         # Check for termination
@@ -808,10 +805,40 @@ class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
         dict[str, dict[Any, Any]],
     ]:
         """Async version of step with evaluator support."""
-        # Time step ++
         self.turn_number += 1
 
-        # For action sampled from action space, it needs to be converted into AgentAction
+        complied_actions = self._process_actions(actions)
+
+        self._record_turn_messages(complied_actions)
+
+        response = await self._run_evaluators()
+
+        self._update_state()
+
+        observations = self._create_observations()
+        rewards = {agent_name: 0.0 for agent_name in self.agent_names}
+        truncated = {agent_name: False for agent_name in self.agent_names}
+        terminated = self.is_terminated()
+        terminated_dict = {agent_name: terminated for agent_name in self.agent_names}
+
+        info = {agent_name: {} for agent_name in self.agent_names}
+        if response:
+            for agent_name in self.agent_names:
+                info[agent_name] = {
+                    'comments': response.comments or '',
+                    'complete_rating': getattr(response, f'{agent_name}_rate', 0) or 0,
+                }
+            if response.terminated and self.terminal_evaluators:
+                info['rewards_prompt'] = {
+                    'overall_prompt': self.terminal_evaluators[0].prompt  # type: ignore
+                }
+
+        return observations, rewards, terminated_dict, truncated, info
+
+    def _process_actions(
+        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
+    ) -> dict[str, AgentAction]:
+        """Process and convert actions to AgentAction format."""
         complied_actions: dict[str, AgentAction] = {}
         for key in actions.keys():
             action = actions[key]
@@ -823,18 +850,22 @@ class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
                 ]
                 complied_actions[key] = AgentAction.parse_obj(action)
 
-        # Masking actions from agent that are in turn
         for idx, agent in enumerate(self.agent_names):
             if not self.action_mask[idx]:
                 complied_actions[agent] = AgentAction(action_type='none', argument='')
 
+        return complied_actions
+
+    def _record_turn_messages(self, complied_actions: dict[str, AgentAction]) -> None:
+        """Record turn messages and actions."""
         self.recv_message(
             'Environment', SimpleMessage(message=f'Turn #{self.turn_number}')
         )
         for agent, action in complied_actions.items():
             self.recv_message(agent, action)
 
-        # Run evaluators if available
+    async def _run_evaluators(self) -> Any:
+        """Run evaluators and return response."""
         response = None
         if self.evaluators:
             response = unweighted_aggregate_evaluate(
@@ -880,41 +911,29 @@ class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
             elif terminal_response.comments:
                 response.comments = terminal_response.comments
 
+        return response
+
+    def _update_state(self) -> None:
+        """Update environment state."""
         # Update current agent index for sequential ordering
         if self.action_order == 'sequential':
-            self.current_agent_index = (self.current_agent_index + 1) % len(self.agent_names)
+            self.current_agent_index = (self.current_agent_index + 1) % len(
+                self.agent_names
+            )
         self._update_action_mask()
 
-        # Create observations for next turn
+    def _create_observations(self) -> dict[str, Observation]:
+        """Create observations for all agents."""
         observations = {}
         for agent_name in self.agent_names:
             observations[agent_name] = self.get_observation(agent_name)
-
-        # Default rewards and info
-        rewards = {agent_name: 0.0 for agent_name in self.agent_names}
-        truncated = {agent_name: False for agent_name in self.agent_names}
-        terminated = self.is_terminated()
-        terminated_dict = {agent_name: terminated for agent_name in self.agent_names}
-        
-        info = {agent_name: {} for agent_name in self.agent_names}
-        if response:
-            for agent_name in self.agent_names:
-                info[agent_name] = {
-                    'comments': response.comments or '',
-                    'complete_rating': getattr(response, f'{agent_name}_rate', 0) or 0,
-                }
-            if response.terminated and self.terminal_evaluators:
-                info['rewards_prompt'] = {
-                    'overall_prompt': self.terminal_evaluators[0].prompt  # type: ignore
-                }
-
-        return observations, rewards, terminated_dict, truncated, info
+        return observations
 
     async def evaluate_episode(self) -> dict:
         """Evaluate the episode using terminal evaluators."""
         if not self.terminal_evaluators:
             return {'message': 'No terminal evaluators available'}
-        
+
         try:
             response = unweighted_aggregate_evaluate(
                 list(
@@ -931,47 +950,54 @@ class MultiAgentTinyChatEnvironment(BaseChatEnivronment):
                     )
                 )
             )
-            
+
             result = {
                 'terminated': response.terminated,
                 'comments': response.comments or '',
             }
-            
+
             # Add scores for each agent
             for agent_name in self.agent_names:
                 agent_rate = getattr(response, f'{agent_name}_rate', None)
                 if agent_rate is not None:
                     result[f'{agent_name}_score'] = agent_rate
                     if hasattr(response, f'{agent_name}_details'):
-                        result[f'{agent_name}_details'] = getattr(response, f'{agent_name}_details')
-            
+                        result[f'{agent_name}_details'] = getattr(
+                            response, f'{agent_name}_details'
+                        )
+
             return result
         except Exception as e:
             return {'message': f'Evaluation failed: {str(e)}'}
 
     def get_conversation_summary(self) -> str:
         """Get a summary of the conversation."""
-        summary = f"Multi-Agent Conversation Summary\n"
-        summary += f"Total turns: {self.turn_number}\n"
+        summary = 'Multi-Agent Conversation Summary\n'
+        summary += f'Total turns: {self.turn_number}\n'
         summary += f"Agents: {', '.join(self.agent_names)}\n"
-        summary += f"Action order: {self.action_order}\n\n"
-        
+        summary += f'Action order: {self.action_order}\n\n'
+
         if self.inbox:
-            summary += "Conversation history:\n"
+            summary += 'Conversation history:\n'
             for source, message in self.inbox:
-                if source != 'Environment' or not message.to_natural_language().startswith('Turn #'):
-                    summary += f"{source}: {message.to_natural_language()}\n"
-        
+                if (
+                    source != 'Environment'
+                    or not message.to_natural_language().startswith('Turn #')
+                ):
+                    summary += f'{source}: {message.to_natural_language()}\n'
+
         return summary
 
     def render(self, mode: str = 'human') -> None:
         """Render the current state of the environment."""
-        print(f"Turn {self.turn_number}")
-        print(f"Active agents: {[name for i, name in enumerate(self.agent_names) if self.action_mask[i]]}")
+        print(f'Turn {self.turn_number}')
+        print(
+            f'Active agents: {[name for i, name in enumerate(self.agent_names) if self.action_mask[i]]}'
+        )
         if self.inbox:
-            print("Recent messages:")
+            print('Recent messages:')
             for source, message in self.inbox[-5:]:  # Show last 5 messages
-                print(f"  {source}: {message.to_natural_language()}")
+                print(f'  {source}: {message.to_natural_language()}')
 
     def close(self) -> None:
         """Clean up resources."""

@@ -1,4 +1,5 @@
 # Tiny-Chat
+
 ```
 conda create -n tiny-chat python=3.10
 conda activate tiny-chat
@@ -7,4 +8,5 @@ poetry install
 ```
 
 ## What's new:
+
 1. You can find some examples [here](/tiny-chat/examples/README.md).

@@ -1,8 +1,8 @@
 from .messages import (
     ActionType,
     AgentAction,
-    ChatBackground,
     Message,
+    MultiAgentChatBackground,
     Observation,
     ScriptBackground,
     ScriptEnvironmentResponse,
@@ -10,7 +10,6 @@ from .messages import (
     ScriptInteractionReturnType,
     SimpleMessage,
     TwoAgentChatBackground,
-    MultiAgentChatBackground,
 )
 
 __all__ = [
