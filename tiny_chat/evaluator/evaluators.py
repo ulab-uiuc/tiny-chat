@@ -12,15 +12,6 @@ log = logging.getLogger('evaluators')
 T_eval_dim = TypeVar('T_eval_dim', bound=BaseModel)
 
 
-class EvaluationForTwoAgents(BaseModel, Generic[T_eval_dim]):
-    agent_1_evaluation: T_eval_dim
-    agent_2_evaluation: T_eval_dim
-
-
-class EvaluationForMultipleAgents(BaseModel, Generic[T_eval_dim]):
-    agent_evaluations: dict[str, T_eval_dim]
-
-
 class Evaluator(abc.ABC):
     @abc.abstractmethod
     def __call__(
@@ -142,13 +133,6 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             print(e)
             log.debug(f'[red] Failed to generate environment response. {e}')
             return []
-
-
-# Evaluation dimensions for Sotopia
-class EvaluationDimension(BaseModel):
-    """Base class for evaluation dimensions"""
-
-    pass
 
 
 class TinyChatDimensions(BaseModel):

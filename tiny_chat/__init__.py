@@ -5,7 +5,7 @@ Tiny Chat - A simplified multi-agent chat system inspired by Sotopia
 __version__ = '0.0.1'
 
 from .agents import LLMAgent
-from .envs import TinyChatEnvironment
+from .envs import MultiAgentTinyChatEnvironment, TwoAgentTinyChatEnvironment
 from .evaluator import (
     EpisodeLLMEvaluator,
     EvaluationDimension,
@@ -16,9 +16,16 @@ from .evaluator import (
     TinyChatDimensions,
     unweighted_aggregate_evaluate,
 )
-from .messages import AgentAction, ChatBackground, Message, Observation, SimpleMessage
+from .messages import (
+    AgentAction,
+    Message,
+    MultiAgentChatBackground,
+    Observation,
+    SimpleMessage,
+    TwoAgentChatBackground,
+)
 from .profile import BaseAgentProfile, BaseEnvironmentProfile, BaseRelationshipProfile
-from .server import ChatServer
+from .server import TinyChatServer
 
 __all__ = [
     'LLMAgent',
@@ -26,8 +33,10 @@ __all__ = [
     'SimpleMessage',
     'Observation',
     'AgentAction',
-    'ChatBackground',
-    'TinyChatEnvironment',
+    'TwoAgentChatBackground',
+    'MultiAgentChatBackground',
+    'TwoAgentTinyChatEnvironment',
+    'MultiAgentTinyChatEnvironment',
     'BaseAgentProfile',
     'BaseEnvironmentProfile',
     'BaseRelationshipProfile',

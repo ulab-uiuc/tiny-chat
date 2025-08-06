@@ -1,3 +1,3 @@
-from .environment import TinyChatEnvironment
+from .environment import MultiAgentTinyChatEnvironment, TwoAgentTinyChatEnvironment
 
-__all__ = ['TinyChatEnvironment']
+__all__ = ['TwoAgentTinyChatEnvironment', 'MultiAgentTinyChatEnvironment']

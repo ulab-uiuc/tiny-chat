@@ -1,14 +1,15 @@
 from .messages import (
     ActionType,
     AgentAction,
-    ChatBackground,
     Message,
+    MultiAgentChatBackground,
     Observation,
     ScriptBackground,
     ScriptEnvironmentResponse,
     ScriptInteraction,
     ScriptInteractionReturnType,
     SimpleMessage,
+    TwoAgentChatBackground,
 )
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     'AgentAction',
     'ScriptInteraction',
     'ScriptInteractionReturnType',
-    'ChatBackground',
+    'TwoAgentChatBackground',
+    'MultiAgentChatBackground',
 ]

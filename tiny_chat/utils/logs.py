@@ -5,17 +5,13 @@ from tiny_chat.profile import AgentProfile
 
 
 class BaseEpisodeLog(BaseModel):
-    # Note that we did not validate the following constraints:
-    # 1. The number of turns in messages and rewards should be the same or off by 1
-    # 2. The agents in the messages are the same as the agetns
-
     environment: str = Field(index=True)
     agents: list[str] = Field(index=True)
     tag: str | None = Field(index=True, default='')
     models: list[str] | None = Field(index=True, default=[])
-    messages: list[list[tuple[str, str, str]]]  # Messages arranged by turn
+    messages: list[list[tuple[str, str, str]]]
     reasoning: str = Field(default='')
-    rewards: list[tuple[float, dict[str, float]] | float]  # Rewards arranged by turn
+    rewards: list[tuple[float, dict[str, float]] | float]
     rewards_prompt: str = Field(default='')
 
     @model_validator(mode='after')
@@ -28,12 +24,6 @@ class BaseEpisodeLog(BaseModel):
         return self
 
     def render_for_humans(self) -> tuple[list[AgentProfile], list[str]]:
-        """Generate a human readable version of the episode log.
-
-        Returns:
-            A tuple of (a list of agent_profiles, a list of str): The agent profiles, and the messages and rewards in each turn.
-        """
-
         agent_profiles = [AgentProfile.get(pk=uuid_str) for uuid_str in self.agents]
         messages_and_rewards = []
         for idx, turn in enumerate(self.messages):
@@ -41,7 +31,7 @@ class BaseEpisodeLog(BaseModel):
             if idx == 0:
                 assert (
                     len(turn) >= 2
-                ), 'The first turn should have at least environemnt messages'
+                ), 'The first turn should have at least environment messages'
                 messages_in_this_turn.append(
                     f"{turn[0][1]}'s perspective (i.e., what {turn[0][1]} knows before the episode starts): {turn[0][2]}"
                 )

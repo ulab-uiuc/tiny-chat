@@ -28,7 +28,7 @@ def _print_result(obj: Any) -> None:
             return
     except Exception:
         pass
-    if isinstance(obj, dict | list):
+    if isinstance(obj, (dict | list)):
         print(json.dumps(obj, indent=2, ensure_ascii=False))
         return
     print(str(obj))
