@@ -5,7 +5,6 @@ Simple Chat Server - Run multi-agent conversations
 import asyncio
 from typing import Literal
 
-from .agents import HumanAgent, LLMAgent
 from .envs import TwoAgentTinyChatEnvironment, MultiAgentTinyChatEnvironment
 from .evaluator import (
     EpisodeLLMEvaluator,
@@ -13,13 +12,6 @@ from .evaluator import (
 )
 from .messages import TwoAgentChatBackground, MultiAgentChatBackground
 from .generator import agenerate_goal
-
-
-class ChatServer:
-    """Simple server to run multi-agent conversations"""
-
-    def __init__(self, api_key: str | None = None):
-        self.api_key = api_key
 
     async def two_agent_run_conversation(
         self,
@@ -71,7 +63,7 @@ class ChatServer:
             elif background and agent_type == 'llm':
                 # Generate goal from background
                 agent.goal = await agenerate_goal(
-                    model_name="gpt-4o-mini",
+                    model_name='gpt-4o-mini',
                     background=background.to_natural_language(),
                 )
 

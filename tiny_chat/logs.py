@@ -22,9 +22,9 @@ class BaseEpisodeLog(BaseModel):
     def agent_number_message_number_reward_number_turn_number_match(self) -> Self:
         agent_number = len(self.agents)
 
-        assert len(self.rewards) == agent_number, (
-            f'Number of agents in rewards {len(self.rewards)} and agents {agent_number} do not match'
-        )
+        assert (
+            len(self.rewards) == agent_number
+        ), f'Number of agents in rewards {len(self.rewards)} and agents {agent_number} do not match'
         return self
 
     def render_for_humans(self) -> tuple[list[AgentProfile], list[str]]:

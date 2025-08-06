@@ -19,6 +19,15 @@ from tiny_chat.messages import (
 
 TBackground = TypeVar('TBackground', bound=ScriptBackground)
 
+# Default action types available to agents
+DEFAULT_ACTION_TYPES: set[ActionType] = {
+    'none',
+    'speak',
+    'non-verbal communication',
+    'action',
+    'leave',
+}
+
 
 # Default action types available to agents
 DEFAULT_ACTION_TYPES: set[ActionType] = {
@@ -58,13 +67,11 @@ class BaseChatEnivronment:
 class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
     def __init__(
         self,
-        available_action_types: set[ActionType] = set(
-            ['none', 'speak', 'non-verbal communication', 'action', 'leave']
-        ),
+        available_action_types: set[ActionType] = DEFAULT_ACTION_TYPES,
         action_order: Literal['simultaneous', 'round-robin', 'random'] = 'simultaneous',
-        evaluators: list[Evaluator] = [],
+        evaluators: list[Evaluator] | None = None,
         model_name: str = 'gpt-4o-mini',
-        terminal_evaluators: list[Evaluator] = [],
+        terminal_evaluators: list[Evaluator] | None = None,
         background_class: type[TBackground] | None = None,
     ) -> None:
         """A chat environment for parallel agents.
@@ -94,8 +101,8 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
         self.available_action_types = list(available_action_types)
         self.action_order = action_order
         self.action_mask: list[bool] = []
-        self.evaluators = evaluators
-        self.terminal_evaluators = terminal_evaluators
+        self.evaluators = evaluators or []
+        self.terminal_evaluators = terminal_evaluators or []
         self.model_name = model_name
         self.turn_number = 0
         self.inbox: list[tuple[str, Message]] = []
@@ -176,10 +183,10 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
         self.agents = [self.background.p1_name, self.background.p2_name]
         agent_backgrounds = []
         if omniscient:
-            for i in range(self.num_agents):
+            for _ in range(self.num_agents):
                 agent_backgrounds.append(copy.deepcopy(self.background))
         else:
-            for i in range(self.num_agents):
+            for _ in range(self.num_agents):
                 agent_backgrounds.append(
                     self.background_class(
                         scenario=raw_background.scenario,
@@ -236,15 +243,16 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
                 ),
             ),
         }
+
     def get_turn_number(self) -> int:
         return self.turn_number
-    
+
     def is_terminated(self) -> bool:
         return self.turn_number >= self.max_turns
-    
+
     def get_observation(self, agent_name: str) -> Observation:
         # get last turn
-        last_turn = ""
+        last_turn = ''
         if self.turn_number > 0 and self.inbox:
             last_actions = {}
             for source, message in self.inbox:
@@ -256,19 +264,19 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
                 last_turn = self.background.to_natural_language()
         else:
             last_turn = self.background.to_natural_language()
-        
+
         agent_index = 0
         if hasattr(self, 'agents') and self.agents:
             try:
                 agent_index = self.agents.index(agent_name)
             except ValueError:
                 agent_index = 0
-        
+
         available_actions = ['none']
         if hasattr(self, 'action_mask') and len(self.action_mask) > agent_index:
             if self.action_mask[agent_index]:
                 available_actions = list(self.available_action_types)
-        
+
         obs = Observation(
             last_turn=last_turn,
             turn_number=self.turn_number,
@@ -417,40 +425,62 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
         dict[str, bool],
         dict[str, dict[Any, Any]],
     ]:
-        # Time step ++
         self.turn_number += 1
 
-        # For action sampled from action space, it needs to be converted into AgentAction
-        complied_actions: dict[str, AgentAction] = {}
-        for key in actions.keys():
-            action = actions[key]
+        complied_actions = self._parse_actions(actions)
+        self._mask_actions(complied_actions)
+        self._broadcast_actions(complied_actions)
+
+        response = await self._evaluate_turn()
+
+        if response.terminated:
+            response = await self._handle_termination(response)
+
+        self._update_action_mask()
+
+        obs = _actions_to_natural_language(complied_actions)
+        info = self._build_info(response)
+
+        return (
+            self._build_observations(obs),
+            self._build_rewards(response),
+            self._build_done_flags(response),
+            self._build_truncation_flags(),
+            info,
+        )
+
+    def _parse_actions(self, actions: dict[str, Any]) -> dict[str, AgentAction]:
+        result = {}
+        for key, action in actions.items():
             if isinstance(action, AgentAction):
-                complied_actions[key] = action
+                result[key] = action
             else:
                 action['action_type'] = self.available_action_types[
                     int(action['action_type'])
                 ]
-                complied_actions[key] = AgentAction.parse_obj(action)
+                result[key] = AgentAction.parse_obj(action)
+        return result
 
-        # Masking actions from agent that are in turn
+    def _mask_actions(self, actions: dict[str, AgentAction]) -> None:
         for idx, agent in enumerate(self.agents):
             if not self.action_mask[idx]:
-                complied_actions[agent] = AgentAction(action_type='none', argument='')
+                actions[agent] = AgentAction(action_type='none', argument='')
 
+    def _broadcast_actions(self, actions: dict[str, AgentAction]) -> None:
         self.recv_message(
             'Environment', SimpleMessage(message=f'Turn #{self.turn_number}')
         )
-        for agent, action in complied_actions.items():
+        for agent, action in actions.items():
             self.recv_message(agent, action)
 
-        response = unweighted_aggregate_evaluate(
+    async def _evaluate_turn(self) -> Any:
+        return unweighted_aggregate_evaluate(
             list(
                 itertools.chain(
                     *await asyncio.gather(
                         *[
                             evaluator.__acall__(
-                                turn_number=self.turn_number,
-                                messages=self.inbox,
+                                turn_number=self.turn_number, messages=self.inbox
                             )
                             for evaluator in self.evaluators
                         ]
@@ -459,30 +489,30 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
             )
         )
 
-        if response.terminated:
-            terminal_response = unweighted_aggregate_evaluate(
-                list(
-                    itertools.chain(
-                        *await asyncio.gather(
-                            *[
-                                evaluator.__acall__(
-                                    turn_number=self.turn_number,
-                                    messages=self.inbox,
-                                )
-                                for evaluator in self.terminal_evaluators
-                            ]
-                        )
+    async def _handle_termination(self, response):
+        terminal_response = unweighted_aggregate_evaluate(
+            list(
+                itertools.chain(
+                    *await asyncio.gather(
+                        *[
+                            evaluator.__acall__(
+                                turn_number=self.turn_number, messages=self.inbox
+                            )
+                            for evaluator in self.terminal_evaluators
+                        ]
                     )
                 )
             )
-            # incorporate terminal response into response
-            response.p1_rate = response.p1_rate or terminal_response.p1_rate
-            response.p2_rate = response.p2_rate or terminal_response.p2_rate
-            if response.comments and terminal_response.comments:
-                response.comments += terminal_response.comments
-            elif terminal_response.comments:
-                response.comments = terminal_response.comments
+        )
+        response.p1_rate = response.p1_rate or terminal_response.p1_rate
+        response.p2_rate = response.p2_rate or terminal_response.p2_rate
+        if response.comments and terminal_response.comments:
+            response.comments += terminal_response.comments
+        elif terminal_response.comments:
+            response.comments = terminal_response.comments
+        return response
 
+    def _update_action_mask(self):
         self.action_mask = [False for _ in self.agents]
         if self.action_order == 'round-robin':
             self.action_mask[self.turn_number % len(self.action_mask)] = True
@@ -490,7 +520,8 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
         else:
             self.action_mask = [True for _ in self.agents]
-        obs = _actions_to_natural_language(complied_actions)
+
+    def _build_info(self, response) -> dict[str, Any]:
         info = {
             self.background.p1_name: {
                 'comments': response.comments or '',
@@ -505,58 +536,57 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
             info['rewards_prompt'] = {
                 'overall_prompt': self.terminal_evaluators[0].prompt  # type: ignore
             }
+        return info
 
-        return (
-            {
-                self.background.p1_name: Observation(
-                    last_turn=obs,
-                    turn_number=self.turn_number,
-                    available_actions=(
-                        list(self.available_action_types)
-                        if self.action_mask[0]
-                        else ['none']
-                    ),
+    def _build_observations(self, obs: str) -> dict[str, Observation]:
+        return {
+            self.background.p1_name: Observation(
+                last_turn=obs,
+                turn_number=self.turn_number,
+                available_actions=(
+                    list(self.available_action_types)
+                    if self.action_mask[0]
+                    else ['none']
                 ),
-                self.background.p2_name: Observation(
-                    last_turn=obs,
-                    turn_number=self.turn_number,
-                    available_actions=(
-                        list(self.available_action_types)
-                        if self.action_mask[1]
-                        else ['none']
-                    ),
+            ),
+            self.background.p2_name: Observation(
+                last_turn=obs,
+                turn_number=self.turn_number,
+                available_actions=(
+                    list(self.available_action_types)
+                    if self.action_mask[1]
+                    else ['none']
                 ),
-            },
-            {
-                self.background.p1_name: (
-                    (
-                        response.p1_rate
-                        if isinstance(response.p1_rate, float)
-                        else response.p1_rate[0]
-                    )
-                    if response.p1_rate
-                    else 0
-                ),
-                self.background.p2_name: (
-                    (
-                        response.p2_rate
-                        if isinstance(response.p2_rate, float)
-                        else response.p2_rate[0]
-                    )
-                    if response.p2_rate
-                    else 0
-                ),
-            },
-            {
-                self.background.p1_name: response.terminated,
-                self.background.p2_name: response.terminated,
-            },
-            {
-                self.background.p1_name: False,
-                self.background.p2_name: False,
-            },
-            info,
-        )
+            ),
+        }
+
+    def _build_rewards(self, response) -> dict[str, float]:
+        return {
+            self.background.p1_name: (
+                response.p1_rate[0]
+                if isinstance(response.p1_rate, list)
+                else response.p1_rate
+            )
+            or 0,
+            self.background.p2_name: (
+                response.p2_rate[0]
+                if isinstance(response.p2_rate, list)
+                else response.p2_rate
+            )
+            or 0,
+        }
+
+    def _build_done_flags(self, response) -> dict[str, bool]:
+        return {
+            self.background.p1_name: response.terminated,
+            self.background.p2_name: response.terminated,
+        }
+
+    def _build_truncation_flags(self) -> dict[str, bool]:
+        return {
+            self.background.p1_name: False,
+            self.background.p2_name: False,
+        }
 
     def render(self, mode: str = 'human') -> None:
         pass

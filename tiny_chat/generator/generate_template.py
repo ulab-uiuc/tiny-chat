@@ -198,10 +198,10 @@ async def agenerate_env_profile(
         Please use the following format:
         {format_instructions}
         """,
-        input_values=dict(
-            inspiration_prompt=inspiration_prompt,
-            examples=examples,
-        ),
+        input_values={
+            'inspiration_prompt': inspiration_prompt,
+            'examples': examples,
+        },
         output_parser=PydanticOutputParser(pydantic_object=BaseEnvironmentProfile),
         temperature=temperature,
         bad_output_process_model=bad_output_process_model,
@@ -227,9 +227,9 @@ async def agenerate_relationship_profile(
         Please use the following format:
         {format_instructions}
         """,
-        input_values=dict(
-            agent_profile=agent_profile,
-        ),
+        input_values={
+            'agent_profile': agent_profile,
+        },
         output_parser=PydanticOutputParser(pydantic_object=BaseRelationshipProfile),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
@@ -289,12 +289,12 @@ async def agenerate_action(
         return await agenerate(
             model_name=model_name,
             template=template,
-            input_values=dict(
-                agent=agent,
-                turn_number=str(turn_number),
-                history=history,
-                action_list=' '.join(action_types),
-            ),
+            input_values={
+                'agent': agent,
+                'turn_number': str(turn_number),
+                'history': history,
+                'action_list': ' '.join(action_types),
+            },
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
             bad_output_process_model=bad_output_process_model,
@@ -310,7 +310,7 @@ async def agenerate_script(
     model_name: str,
     background: ScriptBackground,
     temperature: float = 0.7,
-    agent_names: list[str] = [],
+    agent_names: list[str] | None = None,
     agent_name: str = '',
     history: str = '',
     single_step: bool = False,
@@ -338,13 +338,13 @@ async def agenerate_script(
 
                 Here are the format instructions:
                 {format_instructions}""",
-                input_values=dict(
-                    background=background.to_natural_language(),
-                    history=history,
-                    agent=agent_name,
-                ),
+                input_values={
+                    'background': background.to_natural_language(),
+                    'history': history,
+                    'agent': agent_name,
+                },
                 output_parser=ScriptOutputParser(  # type: ignore[arg-type]
-                    agent_names=agent_names,
+                    agent_names=agent_names or [],
                     background=background.to_natural_language(),
                     single_turn=True,
                 ),
@@ -364,11 +364,11 @@ async def agenerate_script(
                 {format_instructions}
                 Remember that you are an independent scriptwriter and should finish the script by yourself.
                 The output should only contain the script following the format instructions, with no additional comments or text.""",
-                input_values=dict(
-                    background=background.to_natural_language(),
-                ),
+                input_values={
+                    'background': background.to_natural_language(),
+                },
                 output_parser=ScriptOutputParser(  # type: ignore[arg-type]
-                    agent_names=agent_names,
+                    agent_names=agent_names or [],
                     background=background.to_natural_language(),
                     single_turn=False,
                 ),
@@ -429,18 +429,18 @@ async def agenerate_init_profile(
             For the personality and values (e.g., MBTI, moral foundation, and etc.),
             remember to use examples and behaviors in the person's life to demonstrate it.
             """,
-        input_values=dict(
-            name=basic_info['name'],
-            age=basic_info['age'],
-            gender_identity=basic_info['gender_identity'],
-            pronoun=basic_info['pronoun'],
-            occupation=basic_info['occupation'],
-            bigfive=basic_info['Big_Five_Personality'],
-            mft=basic_info['Moral_Foundation'],
-            schwartz=basic_info['Schwartz_Portrait_Value'],
-            decision_style=basic_info['Decision_making_Style'],
-            secret=basic_info['secret'],
-        ),
+        input_values={
+            'name': basic_info['name'],
+            'age': basic_info['age'],
+            'gender_identity': basic_info['gender_identity'],
+            'pronoun': basic_info['pronoun'],
+            'occupation': basic_info['occupation'],
+            'bigfive': basic_info['Big_Five_Personality'],
+            'mft': basic_info['Moral_Foundation'],
+            'schwartz': basic_info['Schwartz_Portrait_Value'],
+            'decision_style': basic_info['Decision_making_Style'],
+            'secret': basic_info['secret'],
+        },
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
@@ -461,7 +461,7 @@ async def convert_narratives(
             template="""Please convert the following text into a first-person narrative.
             e.g, replace name, he, she, him, her, his, and hers with I, me, my, and mine.
             {text}""",
-            input_values=dict(text=text),
+            input_values={'text': text},
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
@@ -472,7 +472,7 @@ async def convert_narratives(
             template="""Please convert the following text into a second-person narrative.
             e.g, replace name, he, she, him, her, his, and hers with you, your, and yours.
             {text}""",
-            input_values=dict(text=text),
+            input_values={'text': text},
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
@@ -496,7 +496,7 @@ async def agenerate_goal(
         template="""Please generate your goal based on the background:
             {background}
             """,
-        input_values=dict(background=background),
+        input_values={'background': background},
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,

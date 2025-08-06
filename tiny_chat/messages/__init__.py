@@ -1,6 +1,7 @@
 from .messages import (
-    AgentAction,
     ActionType,
+    AgentAction,
+    ChatBackground,
     Message,
     Observation,
     ScriptBackground,

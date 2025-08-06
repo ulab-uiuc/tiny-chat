@@ -6,8 +6,8 @@ Usage: python scripts/run_chat.py
 
 import asyncio
 import os
-import sys
 from pathlib import Path
+import sys
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
@@ -21,9 +21,9 @@ async def main():
     """Run a simple multi-agent conversation"""
 
     # Get API key from environment variable
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
-        print("Warning: OPENAI_API_KEY not set. Some features may not work.")
+        print('Warning: OPENAI_API_KEY not set. Some features may not work.')
 
     # Create chat server
     server = ChatServer(api_key=api_key)
@@ -57,8 +57,8 @@ async def main():
         p2_name="Bob",
     )
 
-    print("Starting multi-agent conversation...")
-    print("=" * 50)
+    print('Starting multi-agent conversation...')
+    print('=' * 50)
 
     # Run the conversation
     await server.two_agent_run_conversation(
@@ -69,5 +69,5 @@ async def main():
     )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())

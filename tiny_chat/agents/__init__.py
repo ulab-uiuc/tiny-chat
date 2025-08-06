@@ -1,4 +1,4 @@
-from .agents import LLMAgent, HumanAgent
+from .agents import HumanAgent, LLMAgent
 
 __all__ = [
     'LLMAgent',
