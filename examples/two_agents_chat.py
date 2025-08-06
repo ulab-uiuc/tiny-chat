@@ -14,7 +14,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from tiny_chat.server import ChatServer
-from tiny_chat.messages import ChatBackground
+from tiny_chat.messages import TwoAgentChatBackground
 
 
 async def main():
@@ -47,7 +47,7 @@ async def main():
     ]
 
     # Create a simple background
-    background = ChatBackground(
+    background = TwoAgentChatBackground(
         scenario="Two friends meeting at a coffee shop",
         p1_background="Alice is a software engineer who loves hiking",
         p2_background="Bob is a teacher who enjoys reading science fiction",
@@ -61,7 +61,7 @@ async def main():
     print("=" * 50)
 
     # Run the conversation
-    await server.run_conversation(
+    await server.two_agent_run_conversation(
         agent_configs=agent_configs,
         background=background,
         max_turns=10,

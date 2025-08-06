@@ -3,14 +3,16 @@ Simple Chat Server - Run multi-agent conversations
 """
 
 import asyncio
+from typing import Literal
 
 from .agents import HumanAgent, LLMAgent
-from .envs import TinyChatEnvironment
+from .envs import TwoAgentTinyChatEnvironment, MultiAgentTinyChatEnvironment
 from .evaluator import (
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
 )
-from .messages import ChatBackground
+from .messages import TwoAgentChatBackground, MultiAgentChatBackground
+from .generator import agenerate_goal
 
 
 class ChatServer:
@@ -19,10 +21,10 @@ class ChatServer:
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
 
-    async def run_conversation(
+    async def two_agent_run_conversation(
         self,
         agent_configs: list[dict],
-        background: ChatBackground | None = None,
+        background: TwoAgentChatBackground | None = None,
         max_turns: int = 20,
         enable_evaluation: bool = True,
     ):
@@ -36,8 +38,8 @@ class ChatServer:
             terminal_evaluators.append(EpisodeLLMEvaluator(model_name='gpt-4o-mini'))
 
         # Create environment
-        env = TinyChatEnvironment(
-            background_class=ChatBackground,
+        env = TwoAgentTinyChatEnvironment(
+            background_class=TwoAgentChatBackground,
             evaluators=evaluators,
             terminal_evaluators=terminal_evaluators,
         )
@@ -58,8 +60,8 @@ class ChatServer:
                     model=model,
                     api_key=self.api_key,
                 )
-            elif agent_type == 'human':
-                agent = HumanAgent(name=name, agent_number=agent_number)
+            # elif agent_type == 'human':
+            #     agent = HumanAgent(name=name, agent_number=agent_number)
             else:
                 raise ValueError(f'Unknown agent type: {agent_type}')
 
@@ -112,6 +114,99 @@ class ChatServer:
         print('\n=== Full Conversation Summary ===')
         print(env.get_conversation_summary())
 
+    async def multi_agent_run_conversation(
+        self,
+        agent_configs: list[dict],
+        background: MultiAgentChatBackground | None = None,
+        max_turns: int = 20,
+        enable_evaluation: bool = True,
+        action_order: Literal['simultaneous', 'round-robin', 'sequential', 'random'] = 'sequential',
+    ):
+        """Run a multi-agent conversation with specified agents"""
+        
+        # Create evaluators
+        evaluators = [RuleBasedTerminatedEvaluator(max_turn_number=max_turns)]
+        terminal_evaluators = []
+
+        if enable_evaluation:
+            terminal_evaluators.append(EpisodeLLMEvaluator(model_name='gpt-4o-mini'))
+
+        # Create environment
+        env = MultiAgentTinyChatEnvironment(
+            background_class=MultiAgentChatBackground,
+            evaluators=evaluators,
+            action_order=action_order,
+            terminal_evaluators=terminal_evaluators,
+            max_turns=max_turns,
+        )
+
+        # Create and add agents
+        agents = {}
+        for config in agent_configs:
+            agent_type = config.get('type', 'llm')
+            name = config['name']
+            agent_number = config.get('agent_number', 1)
+
+            if agent_type == 'llm':
+                model = config.get('model', 'gpt-4o-mini')
+                agent = LLMAgent(
+                    agent_name=name,
+                    agent_number=agent_number,
+                    model=model,
+                    api_key=self.api_key,
+                )
+            else:
+                raise ValueError(f'Unknown agent type: {agent_type}')
+
+            # Set goal if provided
+            if 'goal' in config:
+                agent.goal = config['goal']
+            elif background and agent_type == 'llm':
+                # Generate goal from background using existing function
+                agent.goal = await agenerate_goal(
+                    model_name="gpt-4o-mini",
+                    background=background.to_natural_language(),
+                )
+
+            agents[name] = agent
+
+        # Reset environment with agents
+        env.reset(agents=agents)
+
+        print('=== Multi-Agent Conversation Starting ===')
+        if background:
+            print(background.to_natural_language())
+        print('=' * 50)
+
+        # Main conversation loop
+        while not env.is_terminated():
+            print(f'\n--- Turn {env.get_turn_number()} ---')
+
+            # Get actions from all agents based on action order
+            actions = {}
+            for name, agent in agents.items():
+                observation = env.get_observation(name)
+                action = await agent.act(observation)
+                actions[name] = action
+
+                # Print the action
+                print(f'{name}: {action.to_natural_language()}')
+
+            # Execute step
+            await env.astep(actions)
+
+        print('\n=== Multi-Agent Conversation Ended ===')
+        print(f'Total turns: {env.get_turn_number()}')
+
+        # Run episode evaluation if enabled
+        if enable_evaluation and terminal_evaluators:
+            print('\n=== Running Episode Evaluation ===')
+            evaluation_results = await env.evaluate_episode()
+            self._print_evaluation_results(evaluation_results)
+
+        print('\n=== Full Conversation Summary ===')
+        print(env.get_conversation_summary())
+    
     def _print_evaluation_results(self, results: dict):
         """Print evaluation results in a formatted way"""
         if 'message' in results:
@@ -147,53 +242,4 @@ class ChatServer:
         if results.get('comments'):
             print(f'\nEvaluation Comments:\n{results["comments"]}')
 
-    async def run_simple_demo(self):
-        """Run a simple demo conversation"""
-
-        # Create a simple background
-        background = ChatBackground.create_two_agent_background(
-            scenario='Two friends meeting at a coffee shop',
-            agent1_name='Alice',
-            agent2_name='Bob',
-            agent1_goal='Catch up with Bob and share recent news',
-            agent2_goal='Listen to Alice and share own updates',
-        )
-
-        # Agent configurations
-        agent_configs = [
-            {
-                'type': 'llm',
-                'name': 'Alice',
-                'agent_number': 1,
-                'model': 'gpt-4o-mini',
-                'goal': 'Catch up with Bob and share recent news',
-            },
-            {'type': 'human', 'name': 'Bob', 'agent_number': 2},
-        ]
-
-        await self.run_conversation(
-            agent_configs=agent_configs,
-            background=background,
-            max_turns=10,
-            enable_evaluation=True,
-        )
-
-
-async def main():
-    """Main function to run the chat server"""
-    import os
-
-    # Get API key from environment
-    api_key = os.getenv('OPENAI_API_KEY')
-
-    if not api_key:
-        print('Warning: OPENAI_API_KEY not set. LLM agents will not work properly.')
-
-    server = ChatServer(api_key=api_key)
-
-    # Run demo
-    await server.run_simple_demo()
-
-
-if __name__ == '__main__':
-    asyncio.run(main())
+    

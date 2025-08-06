@@ -155,7 +155,6 @@ async def agenerate(
         api_key=api_key,
     )
     result = response.choices[0].message.content
-
     try:
         parsed_result = output_parser.parse(result)
     except Exception as e:

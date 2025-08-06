@@ -42,6 +42,12 @@ class Observation(Message):
 
 
 class ScriptBackground(Message):
+    def to_natural_language(self) -> str:
+        raise NotImplementedError
+
+
+class TwoAgentChatBackground(ScriptBackground):
+    """Alias for ScriptBackground for better naming in tiny_chat context"""
     scenario: str = Field(description='scenario of the episode')
     p1_name: str = Field(description='name of participant 1')
     p2_name: str = Field(description='name of participant 2')
@@ -75,27 +81,25 @@ class ScriptBackground(Message):
             """
             )
 
+class MultiAgentChatBackground(ScriptBackground):
+    scenario: str = Field(description='scenario of the episode')
+    agent_configs: list[dict] = Field(description='configurations of the agents')
 
-class ChatBackground(ScriptBackground):
-    """Alias for ScriptBackground for better naming in tiny_chat context"""
-
-    def create_two_agent_background(
-        scenario: str,
-        agent1_name: str,
-        agent2_name: str,
-        agent1_goal: str,
-        agent2_goal: str,
-    ) -> 'ChatBackground':
-        return ChatBackground(
-            scenario=scenario,
-            p1_name=agent1_name,
-            p2_name=agent2_name,
-            p1_background="",  
-            p2_background="",  
-            p1_goal=agent1_goal,
-            p2_goal=agent2_goal,
+    def to_natural_language(self) -> str:
+        agent_info = ""
+        for i, config in enumerate(self.agent_configs):
+            agent_info += f"\nAgent {i+1} ({config.get('name', f'Agent{i+1}')}):"
+            if 'background' in config:
+                agent_info += f"\n  Background: {config['background']}"
+            if 'goal' in config:
+                agent_info += f"\n  Goal: {config['goal']}"
+        
+        return format_docstring(
+            f"""Here is the context of this interaction:
+            Scenario: {self.scenario}
+            Participants: {agent_info}
+            """
         )
-
 
 class ScriptEnvironmentResponse(Message):
     terminated: bool = Field(

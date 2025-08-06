@@ -8,7 +8,8 @@ from .messages import (
     ScriptInteraction,
     ScriptInteractionReturnType,
     SimpleMessage,
-    ChatBackground,
+    TwoAgentChatBackground,
+    MultiAgentChatBackground,
 )
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     'AgentAction',
     'ScriptInteraction',
     'ScriptInteractionReturnType',
-    'ChatBackground',
+    'TwoAgentChatBackground',
+    'MultiAgentChatBackground',
 ]
