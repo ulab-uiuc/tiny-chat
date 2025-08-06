@@ -3253,14 +3253,14 @@ test = ["argcomplete (>=3.0.3)", "mypy (>=1.7.0)", "pre-commit", "pytest (>=7.0,
 
 [[package]]
 name = "types-setuptools"
-version = "69.5.0.20240522"
+version = "80.9.0.20250801"
 description = "Typing stubs for setuptools"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "types-setuptools-69.5.0.20240522.tar.gz", hash = "sha256:c5a97601b2d040d3b9fcd0633730f0a8c86ebef208552525c97301427f261549"},
-    {file = "types_setuptools-69.5.0.20240522-py3-none-any.whl", hash = "sha256:e27231cbc80648cfaee4921d2f1150107fdf8d33666958abf2aba0191a82688b"},
+    {file = "types_setuptools-80.9.0.20250801-py3-none-any.whl", hash = "sha256:ec908f825134af3964932e6b011dce90f54c291015139cd9cdf79741b7d31b3c"},
+    {file = "types_setuptools-80.9.0.20250801.tar.gz", hash = "sha256:e1e92682fa07226415396bb4e2d31f116a16ffbe583b05b01f9910fcdea3b7e8"},
 ]
 
 [[package]]
@@ -3464,4 +3464,4 @@ test = ["big-O", "importlib-resources ; python_version < \"3.9\"", "jaraco.funct
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <3.13"
-content-hash = "f27d34d4595ad74c5f97ef76032f628b7e7a578149870468a1c454a6564295ee"
+content-hash = "60149e6b1e851087b4fde576432712f5323314cfd23f41b534f7e33eb95158f0"
