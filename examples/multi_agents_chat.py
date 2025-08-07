@@ -8,7 +8,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from tiny_chat.messages import MultiAgentChatBackground
-from tiny_chat.utils.server import TinyChatServer
+from tiny_chat.server import TinyChatServer
 
 
 async def main():

@@ -127,7 +127,7 @@ class TwoAgentTinyChatEnvironment(BaseChatEnivronment):
 
         if agents is not None:
             assert agents, 'agents must be provided'
-            assert len(agents) == 2, 'Only supporting two agents right now'
+            # assert len(agents) == 2, 'Only supporting two agents right now'
             agent_names = list(agents.keys())
 
             # Extract goals from agents if available

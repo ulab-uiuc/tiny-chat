@@ -8,9 +8,9 @@ from .agents import LLMAgent
 from .envs import MultiAgentTinyChatEnvironment, TwoAgentTinyChatEnvironment
 from .evaluator import (
     EpisodeLLMEvaluator,
-    EvaluationDimension,
-    EvaluationForMultipleAgents,
-    EvaluationForTwoAgents,
+    # EvaluationDimension,
+    # EvaluationForMultipleAgents,
+    # EvaluationForTwoAgents,
     Evaluator,
     RuleBasedTerminatedEvaluator,
     TinyChatDimensions,
@@ -44,9 +44,9 @@ __all__ = [
     'RuleBasedTerminatedEvaluator',
     'EpisodeLLMEvaluator',
     'TinyChatDimensions',
-    'EvaluationDimension',
-    'EvaluationForTwoAgents',
-    'EvaluationForMultipleAgents',
+    # 'EvaluationDimension',
+    # 'EvaluationForTwoAgents',
+    # 'EvaluationForMultipleAgents',
     'unweighted_aggregate_evaluate',
     'ChatServer',
 ]

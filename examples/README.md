@@ -17,7 +17,7 @@ examples/
 ### Two-Agent Conversation
 
 ```bash
-python examples/two_agents_chat.py
+bash two_agent_chat/run.sh
 ```
 
 ### Human-AI Interactive Chat
@@ -38,46 +38,9 @@ You can create your own examples by modifying the following parameters:
 
 ### 1. Two-Agent Conversation Customization
 
-In `two_agents_chat.py`, you can modify:
-
-```python
-# Agent configurations
-agent_configs = [
-    {
-        "name": "Your Agent 1 Name",
-        "agent_number": 1,
-        "type": "llm",
-        "model": "gpt-4o-mini",
-        "goal": "Your Agent 1 Goal",
-    },
-    {
-        "name": "Your Agent 2 Name",
-        "agent_number": 2,
-        "type": "llm",
-        "model": "gpt-4o-mini",
-        "goal": "Your Agent 2 Goal",
-    },
-]
-
-# Background settings
-background = TwoAgentChatBackground(
-    scenario="Your conversation scenario description",
-    p1_background="Agent 1 background information",
-    p2_background="Agent 2 background information",
-    p1_goal="Agent 1 specific goal",
-    p2_goal="Agent 2 specific goal",
-    p1_name="Agent 1 Name",
-    p2_name="Agent 2 Name",
-)
-
-# Conversation parameters
-await server.two_agent_run_conversation(
-    agent_configs=agent_configs,
-    background=background,
-    max_turns=10,           # Maximum conversation turns
-    enable_evaluation=True,  # Enable evaluation
-)
-```
+开源模型使用litellm
+闭源模型使用vllm
+支持相同开源模型，不同开源模型
 
 ### 2. Human-AI Interaction Customization
 

@@ -1,14 +1,10 @@
 import os
-from typing import cast
+from typing import cast, Optional
 
-from litellm import acompletion
-from litellm.litellm_core_utils.get_supported_openai_params import (
-    get_supported_openai_params,
-)
-from litellm.utils import supports_response_schema
 from pydantic import validate_call
 from rich import print
 
+from tiny_chat.agents.llm_client import LLMGenerator, LLMConfig, LLMBackend
 from tiny_chat.generator.output_parsers import (
     EnvResponse,
     OutputParser,
@@ -28,15 +24,14 @@ from tiny_chat.profile import BaseEnvironmentProfile, BaseRelationshipProfile
 from tiny_chat.utils import format_docstring
 from tiny_chat.utils.logger import logger as log
 
-DEFAULT_BAD_OUTPUT_PROCESS_MODEL = 'gpt-4o-mini'
 
-
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 async def format_bad_output(
     ill_formed_output: str,
     format_instructions: str,
     model_name: str,
     use_fixed_model_version: bool = True,
+    llm_generator: Optional[LLMGenerator] = None,
 ) -> str:
     template = """
     Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
@@ -51,19 +46,27 @@ async def format_bad_output(
         'ill_formed_output': ill_formed_output,
         'format_instructions': format_instructions,
     }
-    content = template.format(**input_values)
-    response = await acompletion(
-        model=model_name,
-        response_format={'type': 'json_object'},
-        messages=[{'role': 'user', 'content': content}],
+    
+    if llm_generator is None:
+        config = LLMConfig(
+            backend=LLMBackend.LITELLM,
+            model_name=model_name,
+            temperature=0.7,
+        )
+        llm_generator = LLMGenerator(config)
+    
+    response = await llm_generator.generate_structured(
+        template=template,
+        input_values=input_values,
+        schema={'type': 'json_object'},
+        temperature=0.7,
     )
-    reformatted_output = response.choices[0].message.content
-    assert isinstance(reformatted_output, str)
-    log.info(f'Reformated output: {reformatted_output}')
-    return reformatted_output
+    
+    log.info(f'Reformated output: {response}')
+    return response
 
 
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 async def agenerate(
     model_name: str,
     template: str,
@@ -73,15 +76,12 @@ async def agenerate(
     structured_output: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    llm_generator: Optional[LLMGenerator] = None,
 ) -> OutputType:
-    """Generate text using LiteLLM instead of Langchain."""
     if 'format_instructions' not in input_values:
         input_values['format_instructions'] = output_parser.get_format_instructions()
 
     template = format_docstring(template)
-
-    for key, value in input_values.items():
-        template = template.replace(f'{{{key}}}', str(value))
 
     if model_name.startswith('custom'):
         base_url, api_key = (
@@ -93,68 +93,74 @@ async def agenerate(
         base_url = None
         api_key = None
 
-    if structured_output:
-        if not base_url:
-            params = get_supported_openai_params(model=model_name)
-            assert params is not None
-            assert (
-                'response_format' in params
-            ), 'response_format is not supported in this model'
-            assert supports_response_schema(
-                model=model_name
-            ), 'response_schema is not supported in this model'
-        messages = [{'role': 'user', 'content': template}]
-
-        assert isinstance(
-            output_parser, PydanticOutputParser
-        ), 'structured output only supported in PydanticOutputParser'
-        response = await acompletion(
-            model=model_name,
-            messages=messages,
-            response_format=output_parser.pydantic_object,
-            drop_params=True,
-            temperature=temperature,
+    # 创建或使用LLM生成器
+    if llm_generator is None:
+        config = LLMConfig(
+            backend=LLMBackend.LITELLM,
+            model_name=model_name,
             base_url=base_url,
             api_key=api_key,
+            temperature=temperature,
         )
-        result = response.choices[0].message.content
-        log.info(f'Generated result: {result}')
-        assert isinstance(result, str)
-        return cast(OutputType, output_parser.parse(result))
+        llm_generator = LLMGenerator(config)
 
-    messages = [{'role': 'user', 'content': template}]
-
-    response = await acompletion(
-        model=model_name,
-        messages=messages,
-        temperature=temperature,
-        drop_params=True,
-        api_base=base_url,
-        api_key=api_key,
-    )
-    result = response.choices[0].message.content
+    result = None
     try:
+        if structured_output:
+            assert isinstance(
+                output_parser, PydanticOutputParser
+            ), 'structured output only supported in PydanticOutputParser'
+            
+            result = await llm_generator.generate_structured(
+                template=template,
+                input_values=input_values,
+                schema=output_parser.pydantic_object,
+                temperature=temperature,
+            )
+        else:
+            result = await llm_generator.generate(
+                template=template,
+                input_values=input_values,
+                temperature=temperature,
+            )
+        
         parsed_result = output_parser.parse(result)
+        
     except Exception as e:
         if isinstance(output_parser, ScriptOutputParser):
             raise e
-        log.debug(
-            f'[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse',
-            extra={'markup': True},
-        )
-        reformat_result = await format_bad_output(
-            result,
-            output_parser.get_format_instructions(),
-            bad_output_process_model or model_name,
-            use_fixed_model_version,
-        )
+        if result is None:
+            log.debug(
+                f'[red] Failed to generate result: {e}\nstart to reparse',
+                extra={'markup': True},
+            )
+            # 如果result为None，说明生成阶段就失败了，需要重新生成
+            reformat_result = await format_bad_output(
+                "Failed to generate",  # 使用默认值
+                output_parser.get_format_instructions(),
+                bad_output_process_model or model_name,
+                use_fixed_model_version,
+                llm_generator,
+            )
+        else:
+            log.debug(
+                f'[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse',
+                extra={'markup': True},
+            )
+            reformat_result = await format_bad_output(
+                result,
+                output_parser.get_format_instructions(),
+                bad_output_process_model or model_name,
+                use_fixed_model_version,
+                llm_generator,
+            )
         parsed_result = output_parser.parse(reformat_result)
 
     log.info(f'Generated result: {parsed_result}')
     return parsed_result
 
 
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 async def agenerate_env_profile(
     model_name: str,
     inspiration_prompt: str = 'asking my boyfriend to stop being friends with his ex',
@@ -162,6 +168,7 @@ async def agenerate_env_profile(
     temperature: float = 0.7,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    llm_generator: Optional[LLMGenerator] = None,
 ) -> BaseEnvironmentProfile:
     """
     Using langchain to generate the background
@@ -183,15 +190,17 @@ async def agenerate_env_profile(
         temperature=temperature,
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
+        llm_generator=llm_generator,
     )
 
 
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 async def agenerate_relationship_profile(
     model_name: str,
     agents_profiles: list[str],
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    llm_generator: Optional[LLMGenerator] = None,
 ) -> tuple[BaseRelationshipProfile, str]:
     """
     Using langchain to generate the background
@@ -210,10 +219,11 @@ async def agenerate_relationship_profile(
         output_parser=PydanticOutputParser(pydantic_object=BaseRelationshipProfile),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
+        llm_generator=llm_generator,
     )
 
 
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 async def agenerate_action(
     model_name: str,
     history: str,
@@ -225,6 +235,7 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    llm_generator: Optional[LLMGenerator] = None,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -276,13 +287,14 @@ async def agenerate_action(
             temperature=temperature,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            llm_generator=llm_generator,
         )
     except Exception as e:
         log.warning(f'Failed to generate action due to {e}')
         return AgentAction(action_type='none', argument='')
 
 
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 async def agenerate_script(
     model_name: str,
     background: ScriptBackground,
@@ -293,6 +305,7 @@ async def agenerate_script(
     single_step: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    llm_generator: Optional[LLMGenerator] = None,
 ) -> tuple[ScriptInteractionReturnType, str]:
     """
     Using langchain to generate an the script interactions between two agent
@@ -328,6 +341,7 @@ async def agenerate_script(
                 temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
+                llm_generator=llm_generator,
             )
 
         else:
@@ -352,6 +366,7 @@ async def agenerate_script(
                 temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
+                llm_generator=llm_generator,
             )
     except Exception as e:
         # TODO raise(e) # Maybe we do not want to return anything?
@@ -362,7 +377,7 @@ async def agenerate_script(
         return (return_default_value, '')
 
 
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 def process_history(
     script: ScriptBackground | EnvResponse | dict[str, AgentAction],
 ) -> str:
@@ -379,12 +394,13 @@ def process_history(
     return result
 
 
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 async def agenerate_init_profile(
     model_name: str,
     basic_info: dict[str, str],
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    llm_generator: Optional[LLMGenerator] = None,
 ) -> str:
     """
     Using langchain to generate the background
@@ -421,16 +437,17 @@ async def agenerate_init_profile(
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
+        llm_generator=llm_generator,
     )
 
-
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 async def convert_narratives(
     model_name: str,
     narrative: str,
     text: str,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    llm_generator: Optional[LLMGenerator] = None,
 ) -> str:
     if narrative == 'first':
         return await agenerate(
@@ -442,6 +459,7 @@ async def convert_narratives(
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            llm_generator=llm_generator,
         )
     elif narrative == 'second':
         return await agenerate(
@@ -453,20 +471,22 @@ async def convert_narratives(
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            llm_generator=llm_generator,
         )
     else:
         raise ValueError(f'Narrative {narrative} is not supported.')
 
 
-@validate_call
+@validate_call(config={"arbitrary_types_allowed": True})
 async def agenerate_goal(
     model_name: str,
     background: str,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    llm_generator: Optional[LLMGenerator] = None,
 ) -> str:
     """
-    Using langchain to generate the background
+    Using internal LLM generator to generate the goal
     """
     return await agenerate(
         model_name=model_name,
@@ -477,4 +497,5 @@ async def agenerate_goal(
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
+        llm_generator=llm_generator,
     )
