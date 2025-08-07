@@ -3,12 +3,12 @@ import os
 import sys
 from pathlib import Path
 
+from tiny_chat.messages import MultiAgentChatBackground
+from tiny_chat.utils import TinyChatServer
+
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from tiny_chat.messages import MultiAgentChatBackground
-from tiny_chat.utils.server import TinyChatServer
 
 
 async def main():
