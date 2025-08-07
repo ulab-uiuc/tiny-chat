@@ -1,8 +1,4 @@
-from .profile import (
-    BaseAgentProfile,
-    BaseEnvironmentProfile,
-    BaseRelationshipProfile,
-)
+from .profile import BaseAgentProfile, BaseEnvironmentProfile, BaseRelationshipProfile
 
 __all__ = [
     'BaseAgentProfile',

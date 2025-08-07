@@ -5,24 +5,11 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, validate_call
 
-from tiny_chat.messages import (
-    AgentAction,
-    Message,
-    ScriptEnvironmentResponse,
-)
+from tiny_chat.messages import AgentAction, Message, ScriptEnvironmentResponse
 
 log = logging.getLogger('evaluators')
 
 T_eval_dim = TypeVar('T_eval_dim', bound=BaseModel)
-
-
-class EvaluationForTwoAgents(BaseModel, Generic[T_eval_dim]):
-    agent_1_evaluation: T_eval_dim
-    agent_2_evaluation: T_eval_dim
-
-
-class EvaluationForMultipleAgents(BaseModel, Generic[T_eval_dim]):
-    agent_evaluations: dict[str, T_eval_dim]
 
 
 class Evaluator(abc.ABC):
@@ -148,13 +135,6 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             return []
 
 
-# Evaluation dimensions for Sotopia
-class EvaluationDimension(BaseModel):
-    """Base class for evaluation dimensions"""
-
-    pass
-
-
 class TinyChatDimensions(BaseModel):
     """Evaluation dimensions used in Sotopia"""
 
@@ -177,10 +157,10 @@ def _reduce(
     scores: list[float | int] = []
     for k, v in responses_dict.items():
         if k == 'terminated':
-            assert all([isinstance(x, bool) for x in v])
+            assert all(isinstance(x, bool) for x in v)
             reduced_dict[k] = any(v)
         else:
-            assert all([isinstance(x, (float, int)) for x in v])
+            assert all(isinstance(x, float | int) for x in v)
             reduced_dict[k] = sum(v) / len(v)
             scores.append(reduced_dict[k])
     if len(scores) and 'overall_score' not in responses_dict:

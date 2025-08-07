@@ -7,34 +7,38 @@ Tiny Chat is a simplified multi-agent chat system inspired by [Sotopia](https://
 ### Project Structure
 
 #### 📁 `agents/` - Agent Management
+
 - **Purpose**: Defines and manages different types of conversational agents
 - **Key Components**:
   - `LLMAgent`: LLM-based agent using OpenAI API for natural conversations
   - `HumanAgent`: Framework for human-in-the-loop interactions
 - **Features**: Goal-oriented behavior, message history management, context building
 
-#### 📁 `envs/` - Environment Management  
+#### 📁 `envs/` - Environment Management
+
 - **Purpose**: Manages the conversation environment and interaction rules
 - **Key Components**:
   - `TinyChatEnvironment`: Main environment class handling agent interactions
-- **Features**: 
+- **Features**:
   - Multiple action types (speak, non-verbal, action, leave)
   - Different action orders (simultaneous, round-robin, random)
   - Turn-based conversation management
   - Environment state tracking
 
 #### 📁 `profile/` - Agent & Environment Profiles
+
 - **Purpose**: Defines data structures for agent personalities and conversation contexts
 - **Key Components**:
   - `BaseAgentProfile`: Agent personality, background, and characteristics
   - `BaseEnvironmentProfile`: Conversation scenarios and constraints
   - `BaseRelationshipProfile`: Relationship dynamics between agents
-- **Features**: 
+- **Features**:
   - Personality traits (Big Five, MBTI, moral values)
   - Age and occupation constraints
   - Relationship types (stranger to family member)
 
 #### 📁 `messages/` - Message System
+
 - **Purpose**: Handles all communication between agents and environment
 - **Key Components**:
   - `Message`: Base interface for all message types
@@ -45,6 +49,7 @@ Tiny Chat is a simplified multi-agent chat system inspired by [Sotopia](https://
 - **Features**: Natural language conversion, action parsing, conversation history
 
 #### 📁 `generator/` - Content Generation
+
 - **Purpose**: Generates conversation content using LLMs
 - **Key Components**:
   - `generate_template.py`: Main generation functions using LiteLLM
@@ -56,17 +61,19 @@ Tiny Chat is a simplified multi-agent chat system inspired by [Sotopia](https://
   - Goal generation from backgrounds
 
 #### 📁 `evaluator/` - Conversation Evaluation
+
 - **Purpose**: Evaluates conversation quality and agent performance
 - **Key Components**:
   - `RuleBasedTerminatedEvaluator`: Rule-based conversation termination
   - `EpisodeLLMEvaluator`: LLM-based conversation evaluation
   - `TinyChatDimensions`: Evaluation metrics (goal achievement, social intelligence, etc.)
-- **Features**: 
+- **Features**:
   - Multi-dimensional evaluation
   - Automatic conversation termination
   - Performance scoring and analysis
 
 #### 📁 `utils/` - Utility Functions
+
 - **Purpose**: Provides helper functions and utilities
 - **Key Components**:
   - `format_docstring.py`: Document string formatting utilities
@@ -74,6 +81,7 @@ Tiny Chat is a simplified multi-agent chat system inspired by [Sotopia](https://
 - **Features**: Code formatting and documentation helpers
 
 #### 📁 `server.py` - Chat Server
+
 - **Purpose**: High-level interface for running multi-agent conversations
 - **Features**:
   - Conversation orchestration
@@ -82,6 +90,6 @@ Tiny Chat is a simplified multi-agent chat system inspired by [Sotopia](https://
   - Demo and testing capabilities
 
 #### 📁 `logs.py` - Logging System
+
 - **Purpose**: Manages logging and debugging information
 - **Features**: Structured logging, error tracking, conversation monitoring
-

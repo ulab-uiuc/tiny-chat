@@ -1,19 +1,20 @@
 import json
 import re
-from typing import Generic, Type, TypeVar, Optional
-from pydantic import BaseModel, Field
-import json_repair
+from typing import Generic, TypeVar
 
-OutputType = TypeVar("OutputType", bound=object)
-T = TypeVar("T", bound=BaseModel)
+import json_repair
+from pydantic import BaseModel, Field
+
+OutputType = TypeVar('OutputType', bound=object)
+T = TypeVar('T', bound=BaseModel)
 
 
 class EnvResponse(BaseModel):
     reasoning: str = Field(
         description="first reiterate agents' social goals and then reason about what agents say/do and whether that aligns with their goals."
     )
-    p1_rate: int = Field(description="rating of participant 1, on the scale of 0 to 9")
-    p2_rate: int = Field(description="rating of participant 2, on the scale of 0 to 9")
+    p1_rate: int = Field(description='rating of participant 1, on the scale of 0 to 9')
+    p2_rate: int = Field(description='rating of participant 2, on the scale of 0 to 9')
 
 
 class OutputParser(BaseModel, Generic[OutputType]):
@@ -25,14 +26,14 @@ class OutputParser(BaseModel, Generic[OutputType]):
 
 
 class PydanticOutputParser(OutputParser[T], Generic[T]):
-    pydantic_object: Type[T]
+    pydantic_object: type[T]
 
     def parse(self, result: str) -> T:
         json_result = json_repair.loads(result)
         assert isinstance(json_result, dict)
-        if "properties" in json_result:
+        if 'properties' in json_result:
             return self.pydantic_object.model_validate_json(
-                json.dumps(json_result["properties"])
+                json.dumps(json_result['properties'])
             )
         else:
             parsed_result = self.pydantic_object.model_validate_json(result)
@@ -43,19 +44,17 @@ class PydanticOutputParser(OutputParser[T], Generic[T]):
 
 
 class EnvResponsePydanticOutputParser(PydanticOutputParser[EnvResponse]):
-    def __init__(self, pydantic_object: Type[EnvResponse] = EnvResponse) -> None:
-        super(EnvResponsePydanticOutputParser, self).__init__(
-            pydantic_object=pydantic_object
-        )
+    def __init__(self, pydantic_object: type[EnvResponse] = EnvResponse) -> None:
+        super().__init__(pydantic_object=pydantic_object)
 
     def parse(self, text: str) -> EnvResponse:
         # remove trailing commas before ) or ] from text
-        text = re.sub(r",\s*(\)|\])", r"\1", text)
+        text = re.sub(r',\s*(\)|\])', r'\1', text)
         response = super().parse(text)
         if isinstance(response, EnvResponse):
             return response
         else:
-            raise ValueError(f"Expected EnvResponse, got {type(response)}")
+            raise ValueError(f'Expected EnvResponse, got {type(response)}')
 
     def get_format_instructions(self) -> str:
         format_instruction = super().get_format_instructions()
@@ -67,7 +66,7 @@ class StrOutputParser(OutputParser[str]):
         return result
 
     def get_format_instructions(self) -> str:
-        return ""
+        return ''
 
 
 class ScriptOutputParser(OutputParser[str]):
@@ -75,17 +74,17 @@ class ScriptOutputParser(OutputParser[str]):
         return result
 
     def get_format_instructions(self) -> str:
-        return ""
+        return ''
 
 
 class ListOfIntOutputParser(OutputParser[list[int]]):
-    number_of_int: Optional[int] = None
-    range_of_int: Optional[tuple[int, int]] = None
+    number_of_int: int | None = None
+    range_of_int: tuple[int, int] | None = None
 
     def __init__(
         self,
-        number_of_int: Optional[int] = None,
-        range_of_int: Optional[tuple[int, int]] = None,
+        number_of_int: int | None = None,
+        range_of_int: tuple[int, int] | None = None,
     ):
         """
         Parse the output to a list of integers
@@ -101,28 +100,28 @@ class ListOfIntOutputParser(OutputParser[list[int]]):
         return f"a list of{' ' + str(self.number_of_int) if self.number_of_int else ''} integers{' within the range of' + str(self.range_of_int) if self.range_of_int else ''} separated by spaces. Don't output anything else. Format example: 1 2 3 4 5"
 
     def get_format_instructions(self) -> str:
-        return "Please output " + self._get_description_text()
+        return 'Please output ' + self._get_description_text()
 
     def parse(self, output: str) -> list[int]:
         try:
-            output_loaded = output.split(" ")
+            output_loaded = output.split(' ')
             result = [int(x) for x in output_loaded]
             if self.number_of_int and len(result) != self.number_of_int:
-                msg = f"Expect {self.number_of_int} integers, got {len(result)}"
+                msg = f'Expect {self.number_of_int} integers, got {len(result)}'
                 raise ValueError(msg)
             if self.range_of_int:
                 for x in result:
                     if x < self.range_of_int[0] or x > self.range_of_int[1]:
-                        msg = f"Expect integers within the range of {self.range_of_int}, got {result}"
+                        msg = f'Expect integers within the range of {self.range_of_int}, got {result}'
                         raise ValueError(msg)
             return result
         except KeyboardInterrupt:
-            raise KeyboardInterrupt
+            raise KeyboardInterrupt from None
         except Exception as e:
-            msg = f"Exception {e}: the output format is not correct. Expect {self._get_description_text()}, got {output}"
-            raise ValueError(msg)
+            msg = f'Exception {e}: the output format is not correct. Expect {self._get_description_text()}, got {output}'
+            raise ValueError(msg) from e
 
     @property
     def _type(self) -> str:
         """Return the type key."""
-        return "list[int]"
+        return 'list[int]'

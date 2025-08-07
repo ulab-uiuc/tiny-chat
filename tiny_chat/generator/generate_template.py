@@ -1,8 +1,6 @@
-import logging
 import os
 from typing import cast
 
-import gin
 from litellm import acompletion
 from litellm.litellm_core_utils.get_supported_openai_params import (
     get_supported_openai_params,
@@ -10,7 +8,7 @@ from litellm.litellm_core_utils.get_supported_openai_params import (
 from litellm.utils import supports_response_schema
 from pydantic import validate_call
 from rich import print
-from rich.logging import RichHandler
+
 from tiny_chat.generator.output_parsers import (
     EnvResponse,
     OutputParser,
@@ -19,6 +17,16 @@ from tiny_chat.generator.output_parsers import (
     ScriptOutputParser,
     StrOutputParser,
 )
+from tiny_chat.messages import (
+    ActionType,
+    AgentAction,
+    ScriptBackground,
+    ScriptInteraction,
+    ScriptInteractionReturnType,
+)
+from tiny_chat.profile import BaseEnvironmentProfile, BaseRelationshipProfile
+from tiny_chat.utils import format_docstring
+from tiny_chat.utils.logger import logger as log
 from tiny_chat.utils.prompt import (
     ACTION_NORMAL_TEMPLATE,
     ACTION_SCRIPT_TEMPLATE,
@@ -28,37 +36,11 @@ from tiny_chat.utils.prompt import (
     GOAL_TEMPLATE,
     INIT_PROFILE_TEMPLATE,
     RELATIONSHIP_PROFILE_TEMPLATE,
-    SECOND_PERSON_NARRATIVE_TEMPLATE,
     SCRIPT_FULL_TEMPLATE,
     SCRIPT_SINGLE_STEP_TEMPLATE,
+    SECOND_PERSON_NARRATIVE_TEMPLATE,
 )
-from tiny_chat.utils import format_docstring
 
-from tiny_chat.messages import ActionType, AgentAction, ScriptBackground
-from tiny_chat.messages import (
-    ScriptInteraction,
-    ScriptInteractionReturnType,
-)
-from tiny_chat.profile import BaseEnvironmentProfile, BaseRelationshipProfile
-
-# Configure logger
-log = logging.getLogger('sotopia.generation')
-log.setLevel(logging.INFO)
-
-# Create console handler with rich formatting
-console_handler = RichHandler(rich_tracebacks=True)
-console_handler.setLevel(logging.INFO)
-
-# Create formatter
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
-)
-console_handler.setFormatter(formatter)
-
-# Add handler to logger
-log.addHandler(console_handler)
-
-# subject to future OpenAI changes
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = 'gpt-4o-mini'
 
 
@@ -87,7 +69,6 @@ async def format_bad_output(
     return reformatted_output
 
 
-@gin.configurable
 @validate_call
 async def agenerate(
     model_name: str,
@@ -100,14 +81,11 @@ async def agenerate(
     use_fixed_model_version: bool = True,
 ) -> OutputType:
     """Generate text using LiteLLM instead of Langchain."""
-    # Format template with input values
     if 'format_instructions' not in input_values:
         input_values['format_instructions'] = output_parser.get_format_instructions()
 
-    # Process template
     template = format_docstring(template)
 
-    # Replace template variables
     for key, value in input_values.items():
         template = template.replace(f'{{{key}}}', str(value))
 
@@ -125,22 +103,22 @@ async def agenerate(
         if not base_url:
             params = get_supported_openai_params(model=model_name)
             assert params is not None
-            assert 'response_format' in params, (
-                'response_format is not supported in this model'
-            )
-            assert supports_response_schema(model=model_name), (
-                'response_schema is not supported in this model'
-            )
+            assert (
+                'response_format' in params
+            ), 'response_format is not supported in this model'
+            assert supports_response_schema(
+                model=model_name
+            ), 'response_schema is not supported in this model'
         messages = [{'role': 'user', 'content': template}]
 
-        assert isinstance(output_parser, PydanticOutputParser), (
-            'structured output only supported in PydanticOutputParser'
-        )
+        assert isinstance(
+            output_parser, PydanticOutputParser
+        ), 'structured output only supported in PydanticOutputParser'
         response = await acompletion(
             model=model_name,
             messages=messages,
             response_format=output_parser.pydantic_object,
-            drop_params=True,  # drop params to avoid model error if the model does not support it
+            drop_params=True,
             temperature=temperature,
             base_url=base_url,
             api_key=api_key,
@@ -161,7 +139,6 @@ async def agenerate(
         api_key=api_key,
     )
     result = response.choices[0].message.content
-
     try:
         parsed_result = output_parser.parse(result)
     except Exception as e:
@@ -171,7 +148,6 @@ async def agenerate(
             f'[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse',
             extra={'markup': True},
         )
-        # Handle bad output reformatting
         reformat_result = await format_bad_output(
             result,
             output_parser.get_format_instructions(),
@@ -184,7 +160,6 @@ async def agenerate(
     return parsed_result
 
 
-@gin.configurable
 @validate_call
 async def agenerate_env_profile(
     model_name: str,
@@ -200,10 +175,10 @@ async def agenerate_env_profile(
     return await agenerate(
         model_name=model_name,
         template=ENV_PROFILE_TEMPLATE,
-        input_values=dict(
-            inspiration_prompt=inspiration_prompt,
-            examples=examples,
-        ),
+        input_values={
+            'inspiration_prompt': inspiration_prompt,
+            'examples': examples,
+        },
         output_parser=PydanticOutputParser(pydantic_object=BaseEnvironmentProfile),
         temperature=temperature,
         bad_output_process_model=bad_output_process_model,
@@ -225,16 +200,15 @@ async def agenerate_relationship_profile(
     return await agenerate(
         model_name=model_name,
         template=RELATIONSHIP_PROFILE_TEMPLATE,
-        input_values=dict(
-            agent_profile=agent_profile,
-        ),
+        input_values={
+            'agent_profile': agent_profile,
+        },
         output_parser=PydanticOutputParser(pydantic_object=BaseRelationshipProfile),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
     )
 
 
-@gin.configurable
 @validate_call
 async def agenerate_action(
     model_name: str,
@@ -261,12 +235,12 @@ async def agenerate_action(
         return await agenerate(
             model_name=model_name,
             template=template,
-            input_values=dict(
-                agent=agent,
-                turn_number=str(turn_number),
-                history=history,
-                action_list=' '.join(action_types),
-            ),
+            input_values={
+                'agent': agent,
+                'turn_number': str(turn_number),
+                'history': history,
+                'action_list': ' '.join(action_types),
+            },
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
             bad_output_process_model=bad_output_process_model,
@@ -277,13 +251,12 @@ async def agenerate_action(
         return AgentAction(action_type='none', argument='')
 
 
-@gin.configurable
 @validate_call
 async def agenerate_script(
     model_name: str,
     background: ScriptBackground,
     temperature: float = 0.7,
-    agent_names: list[str] = [],
+    agent_names: list[str] | None = None,
     agent_name: str = '',
     history: str = '',
     single_step: bool = False,
@@ -301,13 +274,13 @@ async def agenerate_script(
             return await agenerate(
                 model_name=model_name,
                 template=SCRIPT_SINGLE_STEP_TEMPLATE,
-                input_values=dict(
-                    background=background.to_natural_language(),
-                    history=history,
-                    agent=agent_name,
-                ),
+                input_values={
+                    'background': background.to_natural_language(),
+                    'history': history,
+                    'agent': agent_name,
+                },
                 output_parser=ScriptOutputParser(  # type: ignore[arg-type]
-                    agent_names=agent_names,
+                    agent_names=agent_names or [],
                     background=background.to_natural_language(),
                     single_turn=True,
                 ),
@@ -320,11 +293,11 @@ async def agenerate_script(
             return await agenerate(
                 model_name=model_name,
                 template=SCRIPT_FULL_TEMPLATE,
-                input_values=dict(
-                    background=background.to_natural_language(),
-                ),
+                input_values={
+                    'background': background.to_natural_language(),
+                },
                 output_parser=ScriptOutputParser(  # type: ignore[arg-type]
-                    agent_names=agent_names,
+                    agent_names=agent_names or [],
                     background=background.to_natural_language(),
                     single_turn=False,
                 ),
@@ -371,18 +344,18 @@ async def agenerate_init_profile(
     return await agenerate(
         model_name=model_name,
         template=INIT_PROFILE_TEMPLATE,
-        input_values=dict(
-            name=basic_info['name'],
-            age=basic_info['age'],
-            gender_identity=basic_info['gender_identity'],
-            pronoun=basic_info['pronoun'],
-            occupation=basic_info['occupation'],
-            bigfive=basic_info['Big_Five_Personality'],
-            mft=basic_info['Moral_Foundation'],
-            schwartz=basic_info['Schwartz_Portrait_Value'],
-            decision_style=basic_info['Decision_making_Style'],
-            secret=basic_info['secret'],
-        ),
+        input_values={
+            'name': basic_info['name'],
+            'age': basic_info['age'],
+            'gender_identity': basic_info['gender_identity'],
+            'pronoun': basic_info['pronoun'],
+            'occupation': basic_info['occupation'],
+            'bigfive': basic_info['Big_Five_Personality'],
+            'mft': basic_info['Moral_Foundation'],
+            'schwartz': basic_info['Schwartz_Portrait_Value'],
+            'decision_style': basic_info['Decision_making_Style'],
+            'secret': basic_info['secret'],
+        },
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
@@ -401,7 +374,7 @@ async def convert_narratives(
         return await agenerate(
             model_name=model_name,
             template=FIRST_PERSON_NARRATIVE_TEMPLATE,
-            input_values=dict(text=text),
+            input_values={'text': text},
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
@@ -410,7 +383,7 @@ async def convert_narratives(
         return await agenerate(
             model_name=model_name,
             template=SECOND_PERSON_NARRATIVE_TEMPLATE,
-            input_values=dict(text=text),
+            input_values={'text': text},
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
@@ -432,7 +405,7 @@ async def agenerate_goal(
     return await agenerate(
         model_name=model_name,
         template=GOAL_TEMPLATE,
-        input_values=dict(background=background),
+        input_values={'background': background},
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
