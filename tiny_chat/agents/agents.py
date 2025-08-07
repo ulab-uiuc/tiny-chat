@@ -59,7 +59,7 @@ class LLMAgent:
         # Add agent profile information if available
         if self.agent_profile:
             context_parts.append(
-                f'Agent Profile: {self.agent_profile.to_natural_language()}'
+                f'Agent Profile: {self.agent_profile.to_background_string(0)}'
             )
 
         # Add background if available

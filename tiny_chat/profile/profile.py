@@ -34,6 +34,38 @@ class BaseAgentProfile(BaseModel):
         description='The tag of the agent, used for searching, could be convenient to document agent profiles from different works and sources',
     )
 
+    def to_background_string(self, agent_id: int) -> str:    
+        info_parts = []
+        
+        if self.first_name or self.last_name:
+            info_parts.append(f"Name: {self.first_name} {self.last_name}".strip())
+        
+        if self.age > 0:
+            info_parts.append(f"Age: {self.age}")
+        
+        if self.occupation:
+            info_parts.append(f"Occupation: {self.occupation}")
+        
+        if self.personality_and_values:
+            info_parts.append(f"Personality: {self.personality_and_values}")
+        
+        if self.public_info:
+            info_parts.append(f"Public Info: {self.public_info}")
+        
+        model_fields = set(self.__class__.model_fields.keys())
+        for field_name, field_value in self.__dict__.items():
+            if field_name not in model_fields and field_value is not None:
+                if isinstance(field_value, list):
+                    field_value = ", ".join(str(v) for v in field_value)
+                info_parts.append(f"{field_name.replace('_', ' ').title()}: {field_value}")
+        
+        background_text = "; ".join(info_parts)
+        return f"<root><p viewer='agent_{agent_id}'>{background_text}</p></root>"
+
+
+    class Config:
+        extra = "allow"
+
 
 class BaseEnvironmentProfile(BaseModel):
     pk: str | None = Field(default='')
@@ -71,6 +103,8 @@ class BaseEnvironmentProfile(BaseModel):
         default='',
         description='The tag of the environment, used for searching, could be convenient to document environment profiles from different works and sources',
     )
+    class Config:
+        extra = "allow"
 
 
 class BaseRelationshipProfile(BaseModel):
@@ -85,3 +119,5 @@ class BaseRelationshipProfile(BaseModel):
         default='',
         description='The tag of the relationship, used for searching, could be convenient to document relationship profiles from different works and sources',
     )
+    class Config:
+        extra = "allow"
