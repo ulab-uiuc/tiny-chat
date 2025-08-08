@@ -27,7 +27,7 @@ from tiny_chat.messages import (
 from tiny_chat.profile import BaseEnvironmentProfile, BaseRelationshipProfile
 from tiny_chat.utils import format_docstring
 from tiny_chat.utils.logger import logger as log
-from tiny_chat.utils.prompt import (
+from tiny_chat.utils.template import (
     ACTION_NORMAL_TEMPLATE,
     ACTION_SCRIPT_TEMPLATE,
     BAD_OUTPUT_REFORMAT_TEMPLATE,
@@ -40,6 +40,49 @@ from tiny_chat.utils.prompt import (
     SCRIPT_SINGLE_STEP_TEMPLATE,
     SECOND_PERSON_NARRATIVE_TEMPLATE,
 )
+
+
+def _prepare_vllm_config(
+    model_name: str, vllm_url: str | None = None, vllm_model: str | None = None
+) -> tuple[str | None, str | None, str]:
+    """
+    Prepare vLLM configuration from model name or explicit parameters.
+
+    Returns:
+        tuple: (base_url, api_key, effective_model_name)
+    """
+    # Handle vllm:// prefix in model name
+    if model_name.startswith('vllm://'):
+        # Remove vllm:// prefix
+        remainder = model_name[7:]
+
+        # Check if it contains a URL with port (like localhost:8000)
+        if ':' in remainder and remainder.count('/') >= 1:
+            # Find the first slash after the port
+            slash_pos = remainder.find('/')
+            if slash_pos > 0 and ':' in remainder[:slash_pos]:
+                # Format: vllm://localhost:8000/meta-llama/Llama-2-7b-chat-hf
+                url_part = remainder[:slash_pos]
+                model_part = remainder[slash_pos + 1 :]
+                base_url = f'http://{url_part}/v1'
+                model = model_part
+            else:
+                # Format: vllm://meta-llama/Llama-2-7b-chat-hf (use default URL)
+                base_url = vllm_url or 'http://localhost:8000/v1'
+                model = remainder
+        else:
+            # Format: vllm://meta-llama/Llama-2-7b-chat-hf (use default URL)
+            base_url = vllm_url or 'http://localhost:8000/v1'
+            model = remainder
+        return base_url, 'EMPTY', model
+
+    # Handle explicit vLLM parameters
+    elif vllm_url and vllm_model:
+        return vllm_url, 'EMPTY', vllm_model
+
+    # Not using vLLM
+    return None, None, model_name
+
 
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = 'gpt-4o-mini'
 
@@ -79,6 +122,8 @@ async def agenerate(
     structured_output: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    vllm_url: str | None = None,
+    vllm_model: str | None = None,
 ) -> OutputType:
     """Generate text using LiteLLM instead of Langchain."""
     if 'format_instructions' not in input_values:
@@ -89,7 +134,17 @@ async def agenerate(
     for key, value in input_values.items():
         template = template.replace(f'{{{key}}}', str(value))
 
-    if model_name.startswith('custom'):
+    # Handle vLLM configuration
+    vllm_base_url, vllm_api_key, effective_model_name = _prepare_vllm_config(
+        model_name, vllm_url, vllm_model
+    )
+
+    # If vLLM is configured, use it
+    if vllm_base_url:
+        base_url = vllm_base_url
+        api_key = vllm_api_key
+        model_name = effective_model_name
+    elif model_name.startswith('custom'):
         base_url, api_key = (
             model_name.split('@')[1],
             os.environ.get('CUSTOM_API_KEY', 'EMPTY'),
@@ -168,6 +223,8 @@ async def agenerate_env_profile(
     temperature: float = 0.7,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    vllm_url: str | None = None,
+    vllm_model: str | None = None,
 ) -> BaseEnvironmentProfile:
     """
     Using langchain to generate the background
@@ -183,6 +240,8 @@ async def agenerate_env_profile(
         temperature=temperature,
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
+        vllm_url=vllm_url,
+        vllm_model=vllm_model,
     )
 
 
@@ -192,6 +251,8 @@ async def agenerate_relationship_profile(
     agents_profiles: list[str],
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    vllm_url: str | None = None,
+    vllm_model: str | None = None,
 ) -> tuple[BaseRelationshipProfile, str]:
     """
     Using langchain to generate the background
@@ -206,6 +267,8 @@ async def agenerate_relationship_profile(
         output_parser=PydanticOutputParser(pydantic_object=BaseRelationshipProfile),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
+        vllm_url=vllm_url,
+        vllm_model=vllm_model,
     )
 
 
@@ -221,6 +284,8 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    vllm_url: str | None = None,
+    vllm_model: str | None = None,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -245,6 +310,8 @@ async def agenerate_action(
             temperature=temperature,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            vllm_url=vllm_url,
+            vllm_model=vllm_model,
         )
     except Exception as e:
         log.warning(f'Failed to generate action due to {e}')
@@ -262,6 +329,8 @@ async def agenerate_script(
     single_step: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    vllm_url: str | None = None,
+    vllm_model: str | None = None,
 ) -> tuple[ScriptInteractionReturnType, str]:
     """
     Using langchain to generate an the script interactions between two agent
@@ -287,6 +356,8 @@ async def agenerate_script(
                 temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
+                vllm_url=vllm_url,
+                vllm_model=vllm_model,
             )
 
         else:
@@ -304,6 +375,8 @@ async def agenerate_script(
                 temperature=temperature,
                 bad_output_process_model=bad_output_process_model,
                 use_fixed_model_version=use_fixed_model_version,
+                vllm_url=vllm_url,
+                vllm_model=vllm_model,
             )
     except Exception as e:
         # TODO raise(e) # Maybe we do not want to return anything?
@@ -337,6 +410,8 @@ async def agenerate_init_profile(
     basic_info: dict[str, str],
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    vllm_url: str | None = None,
+    vllm_model: str | None = None,
 ) -> str:
     """
     Using langchain to generate the background
@@ -359,6 +434,8 @@ async def agenerate_init_profile(
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
+        vllm_url=vllm_url,
+        vllm_model=vllm_model,
     )
 
 
@@ -369,6 +446,8 @@ async def convert_narratives(
     text: str,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    vllm_url: str | None = None,
+    vllm_model: str | None = None,
 ) -> str:
     if narrative == 'first':
         return await agenerate(
@@ -378,6 +457,8 @@ async def convert_narratives(
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            vllm_url=vllm_url,
+            vllm_model=vllm_model,
         )
     elif narrative == 'second':
         return await agenerate(
@@ -387,6 +468,8 @@ async def convert_narratives(
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            vllm_url=vllm_url,
+            vllm_model=vllm_model,
         )
     else:
         raise ValueError(f'Narrative {narrative} is not supported.')
@@ -398,6 +481,8 @@ async def agenerate_goal(
     background: str,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    vllm_url: str | None = None,
+    vllm_model: str | None = None,
 ) -> str:
     """
     Using langchain to generate the background
@@ -409,4 +494,6 @@ async def agenerate_goal(
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,
+        vllm_url=vllm_url,
+        vllm_model=vllm_model,
     )

@@ -69,6 +69,19 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
 
+    common_parent.add_argument(
+        '--vllm-url',
+        dest='vllm_url',
+        default=None,
+        help='vLLM server URL (e.g., http://localhost:8000/v1)',
+    )
+    common_parent.add_argument(
+        '--vllm-model',
+        dest='vllm_model',
+        default=None,
+        help='Model name for vLLM server (e.g., meta-llama/Llama-2-7b-chat-hf)',
+    )
+
     sub = parser.add_subparsers(dest='cmd', required=True)
 
     p_env = sub.add_parser(
@@ -165,6 +178,8 @@ async def _run_env_profile(args: argparse.Namespace) -> None:
         inspiration_prompt=args.inspiration,
         examples=args.examples,
         temperature=args.temperature,
+        vllm_url=args.vllm_url,
+        vllm_model=args.vllm_model,
     )
     _print_result(res)
 
@@ -181,6 +196,8 @@ async def _run_action(args: argparse.Namespace) -> None:
         goal=args.goal,
         temperature=args.temperature,
         script_like=args.script_like,
+        vllm_url=args.vllm_url,
+        vllm_model=args.vllm_model,
     )
     _print_result(res)
 
@@ -214,6 +231,8 @@ async def _run_script(args: argparse.Namespace) -> None:
         agent_name=args.agent,
         history=args.history,
         single_step=args.single_step,
+        vllm_url=args.vllm_url,
+        vllm_model=args.vllm_model,
     )
     _print_result(res)
 
