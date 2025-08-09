@@ -399,9 +399,6 @@ async def agenerate_goal(
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
-    """
-    Using langchain to generate the background
-    """
     return await agenerate(
         model_name=model_name,
         template=GOAL_TEMPLATE,
