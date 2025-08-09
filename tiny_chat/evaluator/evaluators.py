@@ -257,3 +257,64 @@ def unweighted_aggregate_evaluate(
         ),
         comments=comments,
     )
+
+
+class EvaluationForTwoAgents:
+    def __call__(
+        self,
+        responses: list[tuple[str, tuple[tuple[str, int | float | bool], str]]],
+    ) -> ScriptEnvironmentResponse:
+        return unweighted_aggregate_evaluate(responses)
+
+
+class EvaluationForMultipleAgents:
+    @staticmethod
+    def _build_agents_rate(
+        agent_reduced: dict[str, tuple[dict[str, float | int | bool], str]],
+    ) -> dict[str, tuple[float, dict[str, float | int | bool]]]:
+        result: dict[str, tuple[float, dict[str, float | int | bool]]] = {}
+        for agent_name, (metric_dict, _comments) in agent_reduced.items():
+            overall = metric_dict.get('overall_score', 0)
+            result[agent_name] = (overall, metric_dict)
+        return result
+
+    @validate_call
+    def __call__(  # noqa: D401
+        self,
+        responses: list[tuple[str, tuple[tuple[str, int | float | bool], str]]],
+    ) -> ScriptEnvironmentResponse:
+        responses_dict: dict[str, list[tuple[tuple[str, int | float | bool], str]]] = (
+            defaultdict(list)
+        )
+        for who, payload in responses:
+            responses_dict[who].append(payload)
+
+        env_reduced: tuple[dict[str, float | int | bool], str] = ({}, '')
+        agents_reduced: dict[str, tuple[dict[str, float | int | bool], str]] = {}
+
+        for who, payloads in responses_dict.items():
+            if who == 'environment':
+                env_reduced = _reduce(payloads)
+            else:
+                agents_reduced[who] = _reduce(payloads)
+
+        terminated = bool(env_reduced[0].get('terminated')) if env_reduced[0] else False
+
+        comment_parts: list[str] = []
+        if env_reduced[1]:
+            comment_parts.append(f'Environment comments:\n{env_reduced[1]}')
+        for agent_name, (_metric, comment) in agents_reduced.items():
+            if comment:
+                comment_parts.append(f'{agent_name} comments:\n{comment}')
+        comments = '\n'.join(comment_parts)
+
+        p1 = agents_reduced.get('agent_1')
+        p2 = agents_reduced.get('agent_2')
+
+        return ScriptEnvironmentResponse(
+            terminated=terminated,
+            agents_rate=self._build_agents_rate(agents_reduced) or None,
+            p1_rate=(p1[0].get('overall_score', 0), p1[0]) if p1 else None,
+            p2_rate=(p2[0].get('overall_score', 0), p2[0]) if p2 else None,
+            comments=comments,
+        )

@@ -128,6 +128,13 @@ class ScriptEnvironmentResponse(Message):
         description='rating of participant 2, on the scale of 1 to 10',
         default=None,
     )
+
+    # Added for multiagents evaluations
+    agents_rate: dict[str, tuple[float, dict[str, float]]] | None = Field(
+        description='rating of all agents, mapping agent name to (score, details)',
+        default=None,
+    )
+
     comments: str | None = Field(
         description='All of the comments supporting the termination and rating',
         default=None,
