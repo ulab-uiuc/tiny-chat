@@ -1,6 +1,7 @@
 import abc
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel, validate_call
@@ -27,9 +28,15 @@ class Evaluator(abc.ABC):
 
 
 class RuleBasedTerminatedEvaluator(Evaluator):
-    def __init__(self, max_turn_number: int = 20, max_stale_turn: int = 2) -> None:
+    def __init__(
+        self,
+        max_turn_number: int = 20,
+        max_stale_turn: int = 2,
+        leave_detector: Callable[[list[tuple[str, Message]]], bool] | None = None,
+    ) -> None:
         self.max_turn_number = max_turn_number
         self.max_stale_turn = max_stale_turn
+        self.leave_detector = leave_detector
 
     @validate_call
     def __call__(
@@ -37,17 +44,17 @@ class RuleBasedTerminatedEvaluator(Evaluator):
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # Rule 1: If the conversation is too long, terminate the conversation
         conversation_too_long = turn_number >= self.max_turn_number
-        # Rule 2: If one of the players leaves, terminate the conversation
-        p1_leaving = (
-            len(messages) > 1
-            and isinstance(messages[-2][1], AgentAction)
-            and messages[-2][1].action_type == 'leave'
-        )
-        p2_leaving = (
-            bool(len(messages))
-            and isinstance(messages[-1][1], AgentAction)
-            and messages[-1][1].action_type == 'leave'
-        )
+        # Rule 2: If one of the players leaves, terminate the conversation (default)
+        if self.leave_detector is not None:
+            someone_leaving = bool(self.leave_detector(messages))
+        else:
+            someone_leaving = False
+            for source, msg in messages[::-1]:
+                if source == 'Environment':
+                    continue
+                if isinstance(msg, AgentAction) and msg.action_type == 'leave':
+                    someone_leaving = True
+                    break
         # Rule 3: If the conversation is stale for too long, terminate the conversation
         stale_count = 0
         for message in messages[::-1]:
@@ -61,11 +68,10 @@ class RuleBasedTerminatedEvaluator(Evaluator):
             if stale_count > self.max_stale_turn:
                 break
         stale_too_long = stale_count > self.max_stale_turn
-        terminated = conversation_too_long or p1_leaving or p2_leaving or stale_too_long
+        terminated = conversation_too_long or someone_leaving or stale_too_long
         reasons_for_termination = (
             f'{"The conversation is too long; " if conversation_too_long else ""}'
-            f'{"Agent 1 is leaving; " if p1_leaving else ""}'
-            f'{"Agent 2 is leaving; " if p2_leaving else ""}'
+            f'{"Someone is leaving; " if someone_leaving else ""}'
             f'{"The conversation stales for too long; " if stale_too_long else ""}'
         )
         return [
@@ -85,11 +91,9 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     def __init__(
         self,
         model_name: str,
-        # response_format_class: type[EvaluationForTwoAgents[T_eval_dim]],
     ) -> None:
         self.model_name = model_name
         self.prompt = ''
-        # self.response_format_class = response_format_class
 
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
@@ -126,7 +130,6 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
 
         try:
             # TODO: Implement actual LLM generation here
-            # For now, return empty response
             response_list = []
             return response_list
         except Exception as e:
@@ -185,75 +188,39 @@ def unweighted_aggregate_evaluate(
         defaultdict(list)
     )
     for response in responses:
-        assert response[0] == 'environment' or response[0].startswith('agent')
         responses_dict[response[0]].append(response[1])
 
     environment_responses: tuple[dict[str, float | int | bool], str] = ({}, '')
-    agent_1_responses: tuple[dict[str, float | int | bool], str] = ({}, '')
-    agent_2_responses: tuple[dict[str, float | int | bool], str] = ({}, '')
+    per_agent_responses: dict[str, tuple[dict[str, float | int | bool], str]] = {}
     for k, v in responses_dict.items():
         if k == 'environment':
             environment_responses = _reduce(v)
         else:
-            if k == 'agent_1':
-                agent_1_responses = _reduce(v)
-            elif k == 'agent_2':
-                agent_2_responses = _reduce(v)
-            else:
-                # TODO: supports more than two agents
-                raise ValueError(f'Only supports agent_1 and agent_2, got {k}')
+            per_agent_responses[k] = _reduce(v)
 
-    comments = (
-        (
-            f'Environment comments: {environment_responses[1]}\n'
-            if environment_responses[1]
-            else ''
-        )
-        + (
-            f'Agent 1 comments:\n{agent_1_responses[1]}\n'
-            if agent_1_responses[1]
-            else ''
-        )
-        + (
-            f'Agent 2 comments:\n{agent_2_responses[1]}\n'
-            if agent_2_responses[1]
-            else ''
-        )
-    )
+    comments_parts: list[str] = []
+    if environment_responses[1]:
+        comments_parts.append(f'Environment comments: {environment_responses[1]}')
+    for agent_key, (_, cmt) in per_agent_responses.items():
+        if cmt:
+            comments_parts.append(f'{agent_key} comments:\n{cmt}')
+    comments = '\n'.join(comments_parts)
     if (
         'terminated' in environment_responses[0]
         and environment_responses[0]['terminated']
     ):
         log.debug(f'[green] The conversation is terminated. {responses}')
+    per_agent_scores: dict[str, float | tuple[float, dict[str, float]]] = {}
+    for agent_key, (score_dict, _) in per_agent_responses.items():
+        if 'overall_score' in score_dict:
+            per_agent_scores[agent_key] = (score_dict['overall_score'], score_dict)
+
     return ScriptEnvironmentResponse(
         terminated=(
             environment_responses[0]['terminated']
             if 'terminated' in environment_responses[0]
             else False
         ),
-        p1_rate=(
-            (
-                (
-                    agent_1_responses[0]['overall_score']
-                    if 'overall_score' in agent_1_responses[0]
-                    else 0
-                ),
-                agent_1_responses[0],
-            )
-            if agent_1_responses != ({}, '')
-            else None
-        ),
-        p2_rate=(
-            (
-                (
-                    agent_2_responses[0]['overall_score']
-                    if 'overall_score' in agent_2_responses[0]
-                    else 0
-                ),
-                agent_2_responses[0],
-            )
-            if agent_2_responses != ({}, '')
-            else None
-        ),
+        per_agent_scores=per_agent_scores,
         comments=comments,
     )

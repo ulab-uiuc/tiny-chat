@@ -13,8 +13,10 @@ class EnvResponse(BaseModel):
     reasoning: str = Field(
         description="first reiterate agents' social goals and then reason about what agents say/do and whether that aligns with their goals."
     )
-    p1_rate: int = Field(description='rating of participant 1, on the scale of 0 to 9')
-    p2_rate: int = Field(description='rating of participant 2, on the scale of 0 to 9')
+    per_agent_scores: dict[str, int] = Field(
+        description='rating for each agent (0-9), keyed by agent name or agent_key',
+        default_factory=dict,
+    )
 
 
 class OutputParser(BaseModel, Generic[OutputType]):
