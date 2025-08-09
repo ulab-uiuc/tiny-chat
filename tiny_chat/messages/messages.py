@@ -29,6 +29,17 @@ class SimpleMessage(Message):
         return self.message
 
 
+class MessengerMixin:
+    def __init__(self) -> None:
+        self.inbox: list[tuple[str, Message]] = []
+
+    def reset_inbox(self) -> None:
+        self.inbox = []
+
+    def recv_message(self, source: str, message: Message) -> None:
+        self.inbox.append((source, message))
+
+
 class Observation(Message):
     last_turn: str = Field(description='the last turn of the conversation')
     turn_number: int = Field(description='the turn number of the conversation')
