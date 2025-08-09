@@ -57,52 +57,19 @@ class ScriptBackground(Message):
         raise NotImplementedError
 
 
-class TwoAgentChatBackground(ScriptBackground):
-    """Alias for ScriptBackground for better naming in tiny_chat context"""
+class UnifiedChatBackground(ScriptBackground):
+    """A unified background class that handles both 2-agent and multi-agent scenarios."""
 
     scenario: str = Field(description='scenario of the episode')
-    p1_name: str = Field(description='name of participant 1')
-    p2_name: str = Field(description='name of participant 2')
-    p1_background: str = Field(description='background of participant 1')
-    p2_background: str = Field(description='background of participant 2')
-    p1_goal: str = Field(description='goal of participant 1')
-    p2_goal: str = Field(description='goal of participant 2')
+    agent_configs: list[dict] = Field(description='configurations of all agents')
 
     def to_natural_language(self) -> str:
-        if self.p1_background or self.p2_background:
-            p1_background = self.p1_background if self.p1_background else 'Unknown'
-            p2_background = self.p2_background if self.p2_background else 'Unknown'
-            # Not using AND, since in stranger relation the background is not visible
-            return format_docstring(
-                f"""Here is the context of this interaction:
-            Scenario: {self.scenario}
-            Participants: {self.p1_name} and {self.p2_name}
-            {self.p1_name}'s background: {p1_background}
-            {self.p2_name}'s background: {p2_background}
-            {self.p1_name}'s goal: {self.p1_goal}
-            {self.p2_name}'s goal: {self.p2_goal}
-            """
-            )
-        else:
-            return format_docstring(
-                f"""Here is the context of this interaction:
-            Scenario: {self.scenario}
-            Participants: {self.p1_name} and {self.p2_name}
-            {self.p1_name}'s goal: {self.p1_goal}
-            {self.p2_name}'s goal: {self.p2_goal}
-            """
-            )
-
-
-class MultiAgentChatBackground(ScriptBackground):
-    scenario: str = Field(description='scenario of the episode')
-    agent_configs: list[dict] = Field(description='configurations of the agents')
-
-    def to_natural_language(self) -> str:
+        """Generate natural language description of the background."""
         agent_info = ''
         for i, config in enumerate(self.agent_configs):
-            agent_info += f"\nAgent {i+1} ({config.get('name', f'Agent{i+1}')}):"
-            if 'background' in config:
+            agent_name = config.get('name', f'Agent{i+1}')
+            agent_info += f'\n{agent_name}:'
+            if 'background' in config and config['background']:
                 agent_info += f"\n  Background: {config['background']}"
             if 'goal' in config:
                 agent_info += f"\n  Goal: {config['goal']}"
@@ -112,6 +79,43 @@ class MultiAgentChatBackground(ScriptBackground):
             Scenario: {self.scenario}
             Participants: {agent_info}
             """
+        )
+
+    def get_agent_goal(self, agent_name: str) -> str:
+        """Get the goal for a specific agent."""
+        for config in self.agent_configs:
+            if config.get('name') == agent_name and 'goal' in config:
+                return config['goal']
+        return 'Achieve your objectives in this conversation'
+
+    def get_agent_background(self, agent_name: str) -> str:
+        """Get the background for a specific agent."""
+        for config in self.agent_configs:
+            if config.get('name') == agent_name and 'background' in config:
+                return config['background']
+        return ''
+
+    def create_agent_specific_background(
+        self, target_agent_name: str, omniscient: bool = False
+    ) -> 'UnifiedChatBackground':
+        """Create a background specific to one agent, optionally hiding other agents' goals."""
+        agent_configs = []
+
+        for config in self.agent_configs:
+            agent_name = config.get('name', '')
+            new_config = config.copy()
+
+            if (
+                not omniscient
+                and agent_name != target_agent_name
+                and 'goal' in new_config
+            ):
+                new_config['goal'] = 'Unknown'
+
+            agent_configs.append(new_config)
+
+        return UnifiedChatBackground(
+            scenario=self.scenario, agent_configs=agent_configs
         )
 
 
@@ -127,6 +131,10 @@ class ScriptEnvironmentResponse(Message):
     p2_rate: float | tuple[float, dict[str, float]] | None = Field(
         description='rating of participant 2, on the scale of 1 to 10',
         default=None,
+    )
+    per_agent_scores: dict[str, float | tuple[float, dict[str, float]]] = Field(
+        description="ratings for arbitrary number of agents, keyed by agent name or agent index label (e.g., 'agent_1')",
+        default_factory=dict,
     )
     comments: str | None = Field(
         description='All of the comments supporting the termination and rating',
@@ -256,17 +264,15 @@ class ScriptInteraction(Message):
                     print(
                         f'The name of the agent, {name}, is not in the list of agent names, {agent_names}'
                     )
-                    name = agent_names[
-                        line_idx % 2
-                    ]  # TODO Not sure what name to be set here
+                    name = agent_names[line_idx % 2]
             except Exception as e:
                 print(
                     f'Error when parsing the dialogue: {line}',
                     f'The error is: {e}',
                 )
                 raise e
-                parsed_action = AgentAction(action_type='none', argument='')
-                name = agent_names[line_idx % 2]  # TODO same question as above
+            parsed_action = AgentAction(action_type='none', argument='')
+            name = agent_names[line_idx % 2]  # TODO same question as above
             inactive_agent_name = (
                 agent_names[0] if name == agent_names[1] else agent_names[1]
             )

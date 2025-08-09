@@ -1,22 +1,26 @@
 from typing import Any, Literal
 
 from tiny_chat.agents import LLMAgent
-from tiny_chat.envs import MultiAgentTinyChatEnvironment, TwoAgentTinyChatEnvironment
+from tiny_chat.envs import TinyChatEnvironment
 from tiny_chat.evaluator import EpisodeLLMEvaluator, RuleBasedTerminatedEvaluator
 from tiny_chat.generator import agenerate_goal
-from tiny_chat.messages import MultiAgentChatBackground, TwoAgentChatBackground
+from tiny_chat.messages import UnifiedChatBackground
 
 
 class TinyChatServer:
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key
 
-    async def two_agent_run_conversation(
+    async def run_conversation(
         self,
         agent_configs: list[dict[str, Any]],
-        background: TwoAgentChatBackground | None = None,
+        background: UnifiedChatBackground | None = None,
         max_turns: int = 20,
         enable_evaluation: bool = True,
+        action_order: Literal[
+            'simultaneous', 'round-robin', 'sequential', 'random'
+        ] = 'simultaneous',
+        scenario: str | None = None,
     ):
         evaluators = [RuleBasedTerminatedEvaluator(max_turn_number=max_turns)]
         terminal_evaluators = []
@@ -24,96 +28,34 @@ class TinyChatServer:
         if enable_evaluation:
             terminal_evaluators.append(EpisodeLLMEvaluator(model_name='gpt-4o-mini'))
 
-        env = TwoAgentTinyChatEnvironment(
-            background_class=TwoAgentChatBackground,
+        env = TinyChatEnvironment(
             evaluators=evaluators,
             terminal_evaluators=terminal_evaluators,
-        )
-        env.max_turns = max_turns
-
-        agents = {}
-        for config in agent_configs:
-            agent_type = config.get('type', 'llm')
-            name = config['name']
-            agent_number = config.get('agent_number', 1)
-
-            if agent_type == 'llm':
-                model = config.get('model', 'gpt-4o-mini')
-                agent = LLMAgent(
-                    agent_name=name,
-                    agent_number=agent_number,
-                    model=model,
-                    api_key=self.api_key,
-                )
-            else:
-                raise ValueError(f'Unknown agent type: {agent_type}')
-
-            if 'goal' in config:
-                agent.goal = config['goal']
-            elif background and agent_type == 'llm':
-                agent.goal = await agenerate_goal(
-                    model_name='gpt-4o-mini',
-                    background=background.to_natural_language(),
-                )
-
-            agents[name] = agent
-
-        env.reset(agents=agents)
-
-        print('=== Conversation Starting ===')
-        if background:
-            print(background.to_natural_language())
-        print('=' * 50)
-
-        await self._run_conversation_loop(env, agents)
-
-        print('\n=== Conversation Ended ===')
-        print(f'Total turns: {env.get_turn_number()}')
-
-        if enable_evaluation and terminal_evaluators:
-            print('\n=== Running Episode Evaluation ===')
-            evaluation_results = await env.evaluate_episode()
-            self._print_evaluation_results(evaluation_results)
-
-        print('\n=== Full Conversation Summary ===')
-        print(env.get_conversation_summary())
-
-    async def multi_agent_run_conversation(
-        self,
-        agent_configs: list[dict[str, Any]],
-        background: MultiAgentChatBackground | None = None,
-        max_turns: int = 20,
-        enable_evaluation: bool = True,
-        action_order: Literal[
-            'simultaneous', 'round-robin', 'sequential', 'random'
-        ] = 'sequential',
-    ) -> None:
-        evaluators = [RuleBasedTerminatedEvaluator(max_turn_number=max_turns)]
-        terminal_evaluators = []
-
-        if enable_evaluation:
-            terminal_evaluators.append(EpisodeLLMEvaluator(model_name='gpt-4o-mini'))
-
-        env = MultiAgentTinyChatEnvironment(
-            background_class=MultiAgentChatBackground,
-            evaluators=evaluators,
             action_order=action_order,
-            terminal_evaluators=terminal_evaluators,
             max_turns=max_turns,
         )
 
         agents = await self._create_agents(agent_configs, background)
 
-        env.reset(agents=agents)
+        reset_options = {}
+        if scenario:
+            reset_options['scenario'] = scenario
+        elif background:
+            reset_options['scenario'] = background.to_natural_language()
 
-        print('=== Multi-Agent Conversation Starting ===')
+        env.reset(agents=agents, options=reset_options if reset_options else None)
+
+        num_agents = len(agents)
+        print(f'=== {num_agents}-Agent Conversation Starting ===')
         if background:
             print(background.to_natural_language())
+        elif scenario:
+            print(scenario)
         print('=' * 50)
 
         await self._run_conversation_loop(env, agents)
 
-        print('\n=== Multi-Agent Conversation Ended ===')
+        print(f'\n=== {len(agents)}-Agent Conversation Ended ===')
         print(f'Total turns: {env.get_turn_number()}')
 
         if enable_evaluation and terminal_evaluators:
