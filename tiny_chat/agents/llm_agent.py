@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import cast
+from typing import Any
 
 from tiny_chat.generator import agenerate_action, agenerate_goal
 from tiny_chat.messages import AgentAction, Observation
@@ -13,11 +13,15 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self,
         agent_name: str | None = None,
         uuid_str: str | None = None,
-        agent_profile: BaseAgentProfile | dict | None = None,
+        agent_profile: BaseAgentProfile | dict[str, Any] | None = None,
         profile_jsonl_path: str | None = None,
         model_name: str = 'gpt-4o-mini',
         script_like: bool = False,
     ) -> None:
+        # Convert dict to BaseAgentProfile if necessary
+        if isinstance(agent_profile, dict):
+            agent_profile = BaseAgentProfile(**agent_profile)
+
         super().__init__(
             agent_name=agent_name,
             uuid_str=uuid_str,
@@ -44,7 +48,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             goal=self.goal,
             script_like=self.script_like,
         )
-        return cast(AgentAction, action)
+        return action
 
     async def _ensure_goal(self) -> None:
         if self._goal is not None:
@@ -58,7 +62,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         return self.inbox[0][1].to_natural_language()
 
     @staticmethod
-    def _history_text(inbox: Iterable[tuple[str, object]]) -> str:
+    def _history_text(inbox: Iterable[tuple[str, Any]]) -> str:
         return '\n'.join(msg.to_natural_language() for _, msg in inbox)
 
     @staticmethod

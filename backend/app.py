@@ -1,6 +1,6 @@
 import argparse
 
-from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, request
 
 from tiny_chat.utils import TemplateManager
 
@@ -8,8 +8,8 @@ app = Flask(__name__)
 prompt_manager = TemplateManager()
 
 
-@app.route('/api/prompts', methods=['GET'])
-def list_templates():
+@app.route('/api/prompts', methods=['GET'])  # type: ignore[misc]
+def list_templates() -> Response:
     """List all available templates"""
     try:
         templates = prompt_manager.list_templates()
@@ -18,8 +18,8 @@ def list_templates():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/prompts/names', methods=['GET'])
-def list_template_names():
+@app.route('/api/prompts/names', methods=['GET'])  # type: ignore[misc]
+def list_template_names() -> Response:
     """List all template names"""
     try:
         names = prompt_manager.list_template_names()
@@ -28,8 +28,8 @@ def list_template_names():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/prompts/<template_name>', methods=['GET'])
-def get_template(template_name: str):
+@app.route('/api/prompts/<template_name>', methods=['GET'])  # type: ignore[misc]
+def get_template(template_name: str) -> Response:
     """Get a specific template"""
     try:
         content = prompt_manager.get_template(template_name)
@@ -46,8 +46,8 @@ def get_template(template_name: str):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/prompts/<template_name>', methods=['PUT'])
-def update_template(template_name: str):
+@app.route('/api/prompts/<template_name>', methods=['PUT'])  # type: ignore[misc]
+def update_template(template_name: str) -> Response:
     """Update an existing template"""
     try:
         data = request.get_json()
@@ -70,8 +70,8 @@ def update_template(template_name: str):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/prompts', methods=['POST'])
-def add_template():
+@app.route('/api/prompts', methods=['POST'])  # type: ignore[misc]
+def add_template() -> Response:
     """Add a new template"""
     try:
         data = request.get_json()
@@ -103,8 +103,8 @@ def add_template():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/prompts/<template_name>', methods=['DELETE'])
-def remove_template(template_name: str):
+@app.route('/api/prompts/<template_name>', methods=['DELETE'])  # type: ignore[misc]
+def remove_template(template_name: str) -> Response:
     """Remove a custom template"""
     try:
         data = request.get_json() or {}
@@ -124,8 +124,8 @@ def remove_template(template_name: str):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/prompts/<template_name>/format', methods=['POST'])
-def format_template(template_name: str):
+@app.route('/api/prompts/<template_name>/format', methods=['POST'])  # type: ignore[misc]
+def format_template(template_name: str) -> Response:
     """Format a template with parameters"""
     try:
         data = request.get_json() or {}
@@ -149,8 +149,8 @@ def format_template(template_name: str):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/prompts/reset', methods=['POST'])
-def reset_templates():
+@app.route('/api/prompts/reset', methods=['POST'])  # type: ignore[misc]
+def reset_templates() -> Response:
     """Reset all templates to defaults"""
     try:
         data = request.get_json() or {}
@@ -165,8 +165,8 @@ def reset_templates():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/prompts/export', methods=['GET'])
-def export_templates():
+@app.route('/api/prompts/export', methods=['GET'])  # type: ignore[misc]
+def export_templates() -> Response:
     """Export all templates as JSON"""
     try:
         templates = prompt_manager.list_templates()
@@ -175,8 +175,8 @@ def export_templates():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/prompts/import', methods=['POST'])
-def import_templates():
+@app.route('/api/prompts/import', methods=['POST'])  # type: ignore[misc]
+def import_templates() -> Response:
     """Import templates from JSON"""
     try:
         data = request.get_json()
@@ -217,8 +217,8 @@ def import_templates():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/health', methods=['GET'])
-def health_check():
+@app.route('/api/health', methods=['GET'])  # type: ignore[misc]
+def health_check() -> Response:
     """Health check endpoint"""
     return jsonify(
         {
@@ -229,8 +229,8 @@ def health_check():
     )
 
 
-@app.route('/', methods=['GET'])
-def index():
+@app.route('/', methods=['GET'])  # type: ignore[misc]
+def index() -> Response:
     """API documentation"""
     return jsonify(
         {
@@ -253,7 +253,7 @@ def index():
     )
 
 
-def main():
+def main() -> None:
     """Main function to run the API server"""
     parser = argparse.ArgumentParser(description='Tiny Chat Prompt API Server')
     parser.add_argument('--host', default='localhost', help='Host to bind to')

@@ -7,7 +7,7 @@ from tiny_chat.utils.template import TemplateManager
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 
-def main():
+def main() -> None:
     """Main function"""
     parser = argparse.ArgumentParser(
         description='Tiny Chat Prompt Management Tool',
@@ -111,17 +111,17 @@ Usage Examples:
         sys.exit(1)
 
 
-def handle_list(manager: TemplateManager, args):
+def handle_list(manager: TemplateManager, args: argparse.Namespace) -> None:
     """Handle list command"""
     if args.names_only:
         templates = manager.list_template_names()
         for name in templates:
             print(name)
     else:
-        templates = manager.list_templates()
+        templates_dict = manager.list_templates()
         print('Available prompt templates:')
         print('=' * 50)
-        for name, content in templates.items():
+        for name, content in templates_dict.items():
             is_default = name in manager.templates and name in manager.templates
             status = '[Default]' if is_default else '[Custom]'
             print(f'{name} {status}')
@@ -130,7 +130,7 @@ def handle_list(manager: TemplateManager, args):
             print('-' * 30)
 
 
-def handle_show(manager: TemplateManager, args):
+def handle_show(manager: TemplateManager, args: argparse.Namespace) -> None:
     """Handle show command"""
     template_name = args.template_name
 
@@ -148,7 +148,7 @@ def handle_show(manager: TemplateManager, args):
         print(content)
 
 
-def handle_set(manager: TemplateManager, args):
+def handle_set(manager: TemplateManager, args: argparse.Namespace) -> None:
     """Handle set command"""
     template_name = args.template_name
     content = args.content
@@ -160,7 +160,7 @@ def handle_set(manager: TemplateManager, args):
         print('Saved to configuration file')
 
 
-def handle_add(manager: TemplateManager, args):
+def handle_add(manager: TemplateManager, args: argparse.Namespace) -> None:
     """Handle add command"""
     template_name = args.template_name
     content = args.content
@@ -172,7 +172,7 @@ def handle_add(manager: TemplateManager, args):
         print('Saved to configuration file')
 
 
-def handle_remove(manager: TemplateManager, args):
+def handle_remove(manager: TemplateManager, args: argparse.Namespace) -> None:
     """Handle remove command"""
     template_name = args.template_name
     save = not args.no_save
@@ -183,7 +183,7 @@ def handle_remove(manager: TemplateManager, args):
         print('Saved to configuration file')
 
 
-def handle_reset(manager: TemplateManager, args):
+def handle_reset(manager: TemplateManager, args: argparse.Namespace) -> None:
     """Handle reset command"""
     save = not args.no_save
 
@@ -193,7 +193,7 @@ def handle_reset(manager: TemplateManager, args):
         print('Saved to configuration file')
 
 
-def handle_edit(manager: TemplateManager, args):
+def handle_edit(manager: TemplateManager, args: argparse.Namespace) -> None:
     """Handle edit command"""
     template_name = args.template_name
 

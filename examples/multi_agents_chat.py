@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 
-async def main():
+async def main() -> None:
     """Run a 3-agent conversation"""
 
     # Get API key from environment variable

@@ -1,4 +1,5 @@
 from enum import IntEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -86,28 +87,27 @@ class BaseAgentProfile(BaseModel):
         background_text = '; '.join(info_parts)
         return f"<root><p viewer='agent_{agent_id}'>{background_text}</p></root>"
 
-    def add_field(self, field_name: str, field_value: any) -> None:
+    def add_field(self, field_name: str, field_value: Any) -> None:
         setattr(self, field_name, field_value)
 
     def remove_field(self, field_name: str) -> bool:
+        """Remove a field from the profile, setting it to default value if it's a model field."""
         if hasattr(self, field_name):
             if field_name in self.__class__.model_fields:
-                field_info = self.__class__.model_fields[field_name]
-                if hasattr(field_info, 'default') and field_info.default is not None:
-                    setattr(self, field_name, field_info.default)
-                elif (
-                    hasattr(field_info, 'default_factory')
-                    and field_info.default_factory is not None
-                ):
-                    setattr(self, field_name, field_info.default_factory())
+                # Reset to simple default values instead of complex Pydantic logic
+                if field_name == 'age':
+                    setattr(self, field_name, 0)
+                elif field_name in [
+                    'moral_values',
+                    'schwartz_personal_values',
+                    'agent_goals',
+                ]:
+                    setattr(self, field_name, [])
                 else:
-                    if field_name == 'age':
-                        setattr(self, field_name, 0)
-                    elif isinstance(getattr(self, field_name, ''), list):
-                        setattr(self, field_name, [])
-                    else:
-                        setattr(self, field_name, '')
+                    # For string fields, set to empty string
+                    setattr(self, field_name, '')
             else:
+                # For non-model fields, delete them
                 delattr(self, field_name)
             return True
         return False

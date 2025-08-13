@@ -7,12 +7,12 @@ from pydantic import BaseModel
 
 INF = float(math.inf)
 
-T = TypeVar('T', bound=Callable[..., Any])
+T = TypeVar('T')
 
 
 def api_calling_error_exponential_backoff(
     retries: int = 5, base_wait_time: int = 1
-) -> Callable[[T], T]:
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for applying exponential backoff to a function.
     :param retries: Maximum number of retries.
@@ -20,7 +20,7 @@ def api_calling_error_exponential_backoff(
     :return: The wrapped function with exponential backoff applied.
     """
 
-    def decorator(func: T) -> T:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             error_handler_mode = kwargs.get('mode', None)
@@ -51,12 +51,12 @@ def api_calling_error_exponential_backoff(
     return cast(Callable[[T], T], decorator)
 
 
-TBaseModel = TypeVar('TBaseModel', bound=Callable[..., BaseModel])
+# TBaseModel TypeVar removed - using explicit types instead
 
 
 def parsing_error_exponential_backoff(
     retries: int = 5, base_wait_time: int = 1
-) -> Callable[[TBaseModel], TBaseModel]:
+) -> Callable[[Callable[..., BaseModel]], Callable[..., BaseModel]]:
     """
     Decorator for retrying a function that returns a BaseModel with exponential backoff.
     :param retries: Maximum number of retries.
@@ -64,7 +64,7 @@ def parsing_error_exponential_backoff(
     :return: The wrapped function with retry logic applied.
     """
 
-    def decorator(func: TBaseModel) -> TBaseModel:
+    def decorator(func: Callable[..., BaseModel]) -> Callable[..., BaseModel]:
         @wraps(func)
         def wrapper(self: Any, *args: Any, **kwargs: Any) -> Optional[BaseModel]:
             attempts = 0
@@ -82,6 +82,8 @@ def parsing_error_exponential_backoff(
             )
             return None
 
-        return cast(TBaseModel, wrapper)
+        return cast(Callable[..., BaseModel], wrapper)
 
-    return cast(Callable[[TBaseModel], TBaseModel], decorator)
+    return cast(
+        Callable[[Callable[..., BaseModel]], Callable[..., BaseModel]], decorator
+    )

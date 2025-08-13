@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Self
 
@@ -5,10 +7,10 @@ from tiny_chat.profile import BaseAgentProfile
 
 
 class BaseEpisodeLog(BaseModel):
-    environment: str = Field(index=True)
-    agents: list[str] = Field(index=True)
-    tag: str | None = Field(index=True, default='')
-    models: list[str] | None = Field(index=True, default=[])
+    environment: str
+    agents: list[str]
+    tag: str | None = Field(default='')
+    models: list[str] = Field(default_factory=list)
     messages: list[list[tuple[str, str, str]]]
     reasoning: str = Field(default='')
     rewards: list[tuple[float, dict[str, float]] | float]
@@ -51,7 +53,10 @@ class BaseEpisodeLog(BaseModel):
         return self
 
     def render_for_humans(self) -> tuple[list[BaseAgentProfile], list[str]]:
-        agent_profiles = [BaseAgentProfile.get(pk=uuid_str) for uuid_str in self.agents]
+        agent_profiles = [
+            BaseAgentProfile(pk=uuid_str, first_name=uuid_str, last_name='')
+            for uuid_str in self.agents
+        ]
         messages_and_rewards = []
 
         for idx, turn in enumerate(self.messages):
@@ -142,7 +147,7 @@ class BaseEpisodeLog(BaseModel):
     def get_conversation_turns(self) -> int:
         return len(self.messages)
 
-    def to_summary_dict(self) -> dict:
+    def to_summary_dict(self) -> dict[str, Any]:
         return {
             'environment': self.environment,
             'agent_count': len(self.agents),
