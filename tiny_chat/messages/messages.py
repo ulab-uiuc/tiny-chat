@@ -1,5 +1,5 @@
 import re
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel, Field
 
@@ -61,7 +61,9 @@ class UnifiedChatBackground(ScriptBackground):
     """A unified background class that handles both 2-agent and multi-agent scenarios."""
 
     scenario: str = Field(description='scenario of the episode')
-    agent_configs: list[dict] = Field(description='configurations of all agents')
+    agent_configs: list[dict[str, Any]] = Field(
+        description='configurations of all agents'
+    )
 
     def to_natural_language(self) -> str:
         """Generate natural language description of the background."""
@@ -85,14 +87,14 @@ class UnifiedChatBackground(ScriptBackground):
         """Get the goal for a specific agent."""
         for config in self.agent_configs:
             if config.get('name') == agent_name and 'goal' in config:
-                return config['goal']
+                return str(config['goal'])
         return 'Achieve your objectives in this conversation'
 
     def get_agent_background(self, agent_name: str) -> str:
         """Get the background for a specific agent."""
         for config in self.agent_configs:
             if config.get('name') == agent_name and 'background' in config:
-                return config['background']
+                return str(config['background'])
         return ''
 
     def create_agent_specific_background(

@@ -27,7 +27,7 @@ from tiny_chat.messages import (
 from tiny_chat.profile import BaseEnvironmentProfile, BaseRelationshipProfile
 from tiny_chat.utils import format_docstring
 from tiny_chat.utils.logger import logger as log
-from tiny_chat.utils.prompt import (
+from tiny_chat.utils.template import (
     ACTION_NORMAL_TEMPLATE,
     ACTION_SCRIPT_TEMPLATE,
     BAD_OUTPUT_REFORMAT_TEMPLATE,

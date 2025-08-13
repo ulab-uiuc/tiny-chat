@@ -2,6 +2,7 @@ from .messages import (
     ActionType,
     AgentAction,
     Message,
+    MessengerMixin,
     Observation,
     ScriptBackground,
     ScriptEnvironmentResponse,
@@ -22,4 +23,5 @@ __all__ = [
     'ScriptInteraction',
     'ScriptInteractionReturnType',
     'UnifiedChatBackground',
+    'MessengerMixin',
 ]

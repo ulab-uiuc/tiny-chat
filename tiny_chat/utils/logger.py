@@ -70,6 +70,6 @@ def get_console_handler() -> Any:
     return console_handler
 
 
-logger = logging.getLogger('research_town')
+logger = logging.getLogger('tiny_chat')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(get_console_handler())

@@ -1,9 +1,9 @@
 import json
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from tiny_chat.messages import MessengerMixin
-from tiny_chat.profile import AgentProfile
+from tiny_chat.profile import BaseAgentProfile
 
 ObsType = TypeVar('ObsType')
 ActType = TypeVar('ActType')
@@ -14,7 +14,7 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin, ABC):
         self,
         agent_name: str | None = None,
         uuid_str: str | None = None,
-        agent_profile: AgentProfile = None,
+        agent_profile: BaseAgentProfile | None = None,
         profile_jsonl_path: str | None = None,
     ) -> None:
         MessengerMixin.__init__(self)
@@ -31,11 +31,16 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin, ABC):
                 raise ValueError(
                     f"Agent with uuid '{uuid_str}' not found in {profile_jsonl_path}"
                 )
-            self.profile = profile
-            self.agent_name = self._extract_agent_name(profile)
+            if isinstance(profile, dict):
+                self.profile = BaseAgentProfile(**profile)
+            else:
+                self.profile = profile
+            self.agent_name = (
+                f'{self.profile.first_name} {self.profile.last_name}'.strip()
+            )
 
         elif agent_name is not None:
-            self.profile = None
+            self.profile = None  # type: ignore
             self.agent_name = agent_name
 
         else:
@@ -64,10 +69,10 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin, ABC):
         self._goal = None
 
     @staticmethod
-    def _load_profile_from_jsonl(path: str, uuid_str: str) -> dict | None:
+    def _load_profile_from_jsonl(path: str, uuid_str: str) -> dict[str, Any] | None:
         with open(path, encoding='utf-8') as f:
             for line in f:
-                data = json.loads(line)
+                data: dict[str, Any] = json.loads(line)
                 if data.get('uuid') == uuid_str:
                     return data
         return None

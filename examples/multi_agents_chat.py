@@ -3,15 +3,15 @@ import os
 import sys
 from pathlib import Path
 
-from tiny_chat.messages import MultiAgentChatBackground
-from tiny_chat.utils import TinyChatServer
+from tiny_chat.messages import UnifiedChatBackground
+from tiny_chat.utils.server import TinyChatServer
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 
-async def main():
+async def main() -> None:
     """Run a 3-agent conversation"""
 
     # Get API key from environment variable
@@ -45,7 +45,7 @@ async def main():
     ]
 
     # Create background object
-    background = MultiAgentChatBackground(
+    background = UnifiedChatBackground(
         scenario='Three friends catching up over coffee',
         agent_configs=[
             {
@@ -69,7 +69,7 @@ async def main():
     print('Starting multi-agent conversation...')
     print('=' * 50)
 
-    await server.multi_agent_run_conversation(
+    await server.run_conversation(
         agent_configs=agent_configs,
         background=background,
         action_order='simultaneous',  # sequential, round-robin, simultaneous, random

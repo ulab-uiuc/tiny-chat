@@ -130,7 +130,9 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
 
         try:
             # TODO: Implement actual LLM generation here
-            response_list = []
+            response_list: list[
+                tuple[str, tuple[tuple[str, int | float | bool], str]]
+            ] = []
             return response_list
         except Exception as e:
             print(e)

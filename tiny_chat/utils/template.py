@@ -118,7 +118,7 @@ class TemplateManager:
         self.templates = DEFAULT_TEMPLATES.copy()
         self._load_custom_templates()
 
-    def _load_custom_templates(self):
+    def _load_custom_templates(self) -> None:
         """Load custom templates from configuration file"""
         try:
             config_path = Path(self.config_file)
@@ -129,7 +129,7 @@ class TemplateManager:
         except Exception as e:
             print(f'Warning: Unable to load custom prompt configuration: {e}')
 
-    def _save_custom_templates(self):
+    def _save_custom_templates(self) -> None:
         """Save custom templates to configuration file"""
         try:
             config_path = Path(self.config_file)
@@ -161,7 +161,7 @@ class TemplateManager:
 
     def set_template(
         self, template_name: str, template_content: str, save: bool = True
-    ):
+    ) -> None:
         """
         Set or update prompt template
 
@@ -176,7 +176,7 @@ class TemplateManager:
 
     def add_template(
         self, template_name: str, template_content: str, save: bool = True
-    ):
+    ) -> None:
         """
         Add new prompt template
 
@@ -192,7 +192,7 @@ class TemplateManager:
 
         self.set_template(template_name, template_content, save)
 
-    def remove_template(self, template_name: str, save: bool = True):
+    def remove_template(self, template_name: str, save: bool = True) -> None:
         """
         Remove prompt template (can only remove custom templates, not default ones)
 
@@ -219,7 +219,7 @@ class TemplateManager:
         """
         return self.templates.copy()
 
-    def list_template_names(self) -> list:
+    def list_template_names(self) -> list[str]:
         """
         List all template names
 
@@ -228,7 +228,7 @@ class TemplateManager:
         """
         return list(self.templates.keys())
 
-    def reset_to_defaults(self, save: bool = True):
+    def reset_to_defaults(self, save: bool = True) -> None:
         """
         Reset all templates to default values
 
@@ -239,7 +239,7 @@ class TemplateManager:
         if save:
             self._save_custom_templates()
 
-    def format_template(self, template_name: str, **kwargs) -> str:
+    def format_template(self, template_name: str, **kwargs: Any) -> str:
         """
         Format the specified template
 
@@ -284,7 +284,7 @@ def get_template(template_name: str) -> str:
     return _prompt_manager.get_template(template_name)
 
 
-def format_template(template_name: str, **kwargs) -> str:
+def format_template(template_name: str, **kwargs: Any) -> str:
     """Format the specified template (backward compatibility)"""
     return _prompt_manager.format_template(template_name, **kwargs)
 

@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from tiny_chat.agents import LLMAgent
-from tiny_chat.messages import Observation, TwoAgentChatBackground
+from tiny_chat.messages import Observation, UnifiedChatBackground
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
@@ -32,19 +32,23 @@ async def interactive_chat() -> None:
 
     agent = LLMAgent(
         agent_name='AI Assistant',
-        model='gpt-4o-mini',
-        api_key=api_key,
-        goal='Be helpful, friendly, and engaging in conversation',
+        model_name='gpt-4o-mini',
     )
 
-    _background = TwoAgentChatBackground(
+    _background = UnifiedChatBackground(
         scenario='A helpful AI assistant chatting with a human',
-        p1_background='You are a helpful AI assistant',
-        p2_background='A human user who wants to chat',
-        p1_goal='Provide helpful and engaging responses',
-        p2_goal='Have an interesting conversation',
-        p1_name='AI Assistant',
-        p2_name='Human',
+        agent_configs=[
+            {
+                'name': 'AI Assistant',
+                'background': 'You are a helpful AI assistant',
+                'goal': 'Provide helpful and engaging responses',
+            },
+            {
+                'name': 'Human',
+                'background': 'A human user who wants to chat',
+                'goal': 'Have an interesting conversation',
+            },
+        ],
     )
 
     print("🤖 AI Assistant: Hello! I'm your AI assistant. How can I help you today?")

@@ -6,7 +6,7 @@ from tiny_chat.utils.template import TemplateManager
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 
-def basic_usage_example():
+def basic_usage_example() -> None:
     """Basic usage example"""
     print('=== Basic Usage Example ===')
 
@@ -28,7 +28,7 @@ def basic_usage_example():
     print()
 
 
-def custom_template_example():
+def custom_template_example() -> None:
     """Custom template example"""
     print('=== Custom Template Example ===')
 
@@ -60,7 +60,7 @@ Please respond in a {style} tone and give specific recommendations.
     print()
 
 
-def template_management_example():
+def template_management_example() -> None:
     """Template management example"""
     print('=== Template Management Example ===')
 
@@ -87,7 +87,7 @@ def template_management_example():
     print()
 
 
-def batch_operations_example():
+def batch_operations_example() -> None:
     """Batch operations example"""
     print('=== Batch Operations Example ===')
 
@@ -125,7 +125,7 @@ def batch_operations_example():
     print()
 
 
-def error_handling_example():
+def error_handling_example() -> None:
     """Error handling example"""
     print('=== Error Handling Example ===')
 
@@ -149,7 +149,7 @@ def error_handling_example():
     print()
 
 
-def configuration_example():
+def configuration_example() -> None:
     """Configuration management example"""
     print('=== Configuration Management Example ===')
 
@@ -174,7 +174,7 @@ def configuration_example():
     print()
 
 
-def rest_api_example():
+def rest_api_example() -> None:
     """REST API usage example"""
     print('=== REST API Usage Example ===')
     print('To use the REST API:')
@@ -205,7 +205,7 @@ def rest_api_example():
     print()
 
 
-def main():
+def main() -> None:
     """Main function"""
     print('Tiny Chat Prompt API Usage Examples')
     print('=' * 50)

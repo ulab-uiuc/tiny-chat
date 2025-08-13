@@ -1,6 +1,7 @@
 import asyncio
 import itertools
 import random
+from abc import ABC, abstractmethod
 from typing import Any, Literal, TypeVar
 
 from pydantic import validate_call
@@ -37,19 +38,26 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     return action_str
 
 
-class BaseChatEnivronment:
-    def reset(self, **kwargs):
+class BaseChatEnivronment(ABC):
+    @abstractmethod
+    def reset(self, **kwargs: Any) -> Any:
         pass
 
-    def step(self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]):
+    @abstractmethod
+    def step(
+        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
+    ) -> Any:
         pass
 
+    @abstractmethod
     def get_observation(self, agent_name: str) -> Observation:
         pass
 
+    @abstractmethod
     def is_terminated(self) -> bool:
         pass
 
+    @abstractmethod
     def get_turn_number(self) -> int:
         pass
 
@@ -80,16 +88,16 @@ class TinyChatEnvironment(BaseChatEnivronment):
         self.model_name = model_name
         self.max_turns = max_turns
 
-        self.agents = []
-        self.agent_names = []
-        self.background = None
-        self.env_background = None
+        self.agents: list[Any] = []
+        self.agent_names: list[str] = []
+        self.background: UnifiedChatBackground | None = None
+        self.env_background: UnifiedChatBackground | None = None
         self.turn_number = 0
         self.current_agent_index = 0
         self.action_mask: list[bool] = []
         self.inbox: list[tuple[str, Message]] = []
 
-        self.action_spaces = {}
+        self.action_spaces: dict[str, Any] = {}
         self._omniscient: bool = False
 
     def reset_inbox(self) -> None:
@@ -100,7 +108,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         """Receive a message and add to inbox."""
         self.inbox.append((source, message))
 
-    def reset(
+    def reset(  # type: ignore[override]
         self,
         seed: int | None = None,
         options: dict[str, str] | None = None,
@@ -140,7 +148,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         initial_obs = {}
         for i, agent_name in enumerate(self.agent_names):
             if omniscient:
-                bg_for_agent = self.env_background  # type: ignore
+                bg_for_agent = self.env_background
             else:
                 bg_for_agent = (
                     self.env_background or self.background
@@ -148,7 +156,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
                     agent_name, omniscient=False
                 )
             initial_obs[agent_name] = Observation(
-                last_turn=bg_for_agent.to_natural_language(),
+                last_turn=bg_for_agent.to_natural_language() if bg_for_agent else '',
                 turn_number=0,
                 available_actions=(
                     list(self.available_action_types)
@@ -484,7 +492,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         return response
 
-    def _run_sync_evaluators(self, evaluators: list) -> list:
+    def _run_sync_evaluators(self, evaluators: list[Evaluator]) -> list[Any]:
         """Helper method to run evaluators synchronously."""
         results = []
         for evaluator in evaluators:
@@ -525,7 +533,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         elif terminal_response.comments:
             response.comments = terminal_response.comments
 
-    def _build_rewards(self, response) -> dict[str, float]:
+    def _build_rewards(self, response: Any) -> dict[str, float]:
         """Build rewards dictionary from evaluator response."""
         rewards = dict.fromkeys(self.agent_names, 0.0)
 
@@ -545,9 +553,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         return rewards
 
-    def _build_info(self, response) -> dict[str, Any]:
+    def _build_info(self, response: Any) -> dict[str, Any]:
         """Build info dictionary from evaluator response."""
-        info = dict.fromkeys(self.agent_names, {})
+        info: dict[str, Any] = dict.fromkeys(self.agent_names, {})
 
         if response:
             for agent_name in self.agent_names:
@@ -579,7 +587,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         return info
 
-    async def evaluate_episode(self) -> dict:
+    async def evaluate_episode(self) -> dict[str, Any]:
         """Evaluate the episode using terminal evaluators."""
         if not self.terminal_evaluators:
             return {'message': 'No terminal evaluators available'}

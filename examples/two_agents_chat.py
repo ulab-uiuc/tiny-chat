@@ -9,7 +9,7 @@ import os
 import sys
 from pathlib import Path
 
-from tiny_chat.messages import TwoAgentChatBackground
+from tiny_chat.messages import UnifiedChatBackground
 from tiny_chat.utils.server import TinyChatServer
 
 # Add the project root to Python path
@@ -17,7 +17,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 
-async def main():
+async def main() -> None:
     """Run a simple multi-agent conversation"""
 
     # Get API key from environment variable
@@ -46,22 +46,27 @@ async def main():
         },
     ]
 
-    # Create a simple background
-    background = TwoAgentChatBackground(
+    background = UnifiedChatBackground(
         scenario='Two friends meeting at a coffee shop',
-        p1_background='Alice is a software engineer who loves hiking',
-        p2_background='Bob is a teacher who enjoys reading science fiction',
-        p1_goal='Have a pleasant conversation about weekend plans',
-        p2_goal='Discuss recent books and outdoor activities',
-        p1_name='Alice',
-        p2_name='Bob',
+        agent_configs=[
+            {
+                'name': 'Alice',
+                'background': 'Alice is a software engineer who loves hiking',
+                'goal': 'Have a pleasant conversation about weekend plans',
+            },
+            {
+                'name': 'Bob',
+                'background': 'Bob is a teacher who enjoys reading science fiction',
+                'goal': 'Discuss recent books and outdoor activities',
+            },
+        ],
     )
 
     print('Starting multi-agent conversation...')
     print('=' * 50)
 
     # Run the conversation
-    await server.two_agent_run_conversation(
+    await server.run_conversation(
         agent_configs=agent_configs,
         background=background,
         max_turns=10,

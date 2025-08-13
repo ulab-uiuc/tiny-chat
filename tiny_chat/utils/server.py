@@ -2,7 +2,12 @@ from typing import Any, Literal
 
 from tiny_chat.agents import LLMAgent
 from tiny_chat.envs import TinyChatEnvironment
-from tiny_chat.evaluator import EpisodeLLMEvaluator, RuleBasedTerminatedEvaluator
+from tiny_chat.evaluator import (
+    EpisodeLLMEvaluator,
+    Evaluator,
+    RuleBasedTerminatedEvaluator,
+    TinyChatDimensions,
+)
 from tiny_chat.generator import agenerate_goal
 from tiny_chat.messages import UnifiedChatBackground
 
@@ -21,12 +26,16 @@ class TinyChatServer:
             'simultaneous', 'round-robin', 'sequential', 'random'
         ] = 'simultaneous',
         scenario: str | None = None,
-    ):
-        evaluators = [RuleBasedTerminatedEvaluator(max_turn_number=max_turns)]
-        terminal_evaluators = []
+    ) -> None:
+        evaluators: list[Evaluator] = [
+            RuleBasedTerminatedEvaluator(max_turn_number=max_turns)
+        ]
+        terminal_evaluators: list[Evaluator] = []
 
         if enable_evaluation:
-            terminal_evaluators.append(EpisodeLLMEvaluator(model_name='gpt-4o-mini'))
+            terminal_evaluators.append(
+                EpisodeLLMEvaluator[TinyChatDimensions](model_name='gpt-4o-mini')
+            )
 
         env = TinyChatEnvironment(
             evaluators=evaluators,
@@ -74,15 +83,10 @@ class TinyChatServer:
         for config in agent_configs:
             agent_type = config.get('type', 'llm')
             name = config['name']
-            agent_number = config.get('agent_number', 1)
 
             if agent_type == 'llm':
-                model = config.get('model', 'gpt-4o-mini')
                 agent = LLMAgent(
                     agent_name=name,
-                    agent_number=agent_number,
-                    model=model,
-                    api_key=self.api_key,
                 )
             else:
                 raise ValueError(f'Unknown agent type: {agent_type}')
