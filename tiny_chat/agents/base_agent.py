@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
 from tiny_chat.messages import MessengerMixin
-from tiny_chat.profile import AgentProfile
+from tiny_chat.profile import BaseAgentProfile
 
 ObsType = TypeVar('ObsType')
 ActType = TypeVar('ActType')
@@ -14,7 +14,7 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin, ABC):
         self,
         agent_name: str | None = None,
         uuid_str: str | None = None,
-        agent_profile: AgentProfile = None,
+        agent_profile: BaseAgentProfile = None,
         profile_jsonl_path: str | None = None,
     ) -> None:
         MessengerMixin.__init__(self)

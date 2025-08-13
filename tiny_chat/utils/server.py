@@ -74,15 +74,10 @@ class TinyChatServer:
         for config in agent_configs:
             agent_type = config.get('type', 'llm')
             name = config['name']
-            agent_number = config.get('agent_number', 1)
 
             if agent_type == 'llm':
-                model = config.get('model', 'gpt-4o-mini')
                 agent = LLMAgent(
                     agent_name=name,
-                    agent_number=agent_number,
-                    model=model,
-                    api_key=self.api_key,
                 )
             else:
                 raise ValueError(f'Unknown agent type: {agent_type}')

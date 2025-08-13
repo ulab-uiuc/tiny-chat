@@ -1,9 +1,9 @@
 from collections.abc import Iterable
 from typing import cast
 
-from tiny_chat.llm import agenerate_action, agenerate_goal
+from tiny_chat.generator import agenerate_action, agenerate_goal
 from tiny_chat.messages import AgentAction, Observation
-from tiny_chat.profile import AgentProfile
+from tiny_chat.profile import BaseAgentProfile
 
 from .base_agent import BaseAgent
 
@@ -13,7 +13,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self,
         agent_name: str | None = None,
         uuid_str: str | None = None,
-        agent_profile: AgentProfile | dict | None = None,
+        agent_profile: BaseAgentProfile | dict | None = None,
         profile_jsonl_path: str | None = None,
         model_name: str = 'gpt-4o-mini',
         script_like: bool = False,

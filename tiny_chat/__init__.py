@@ -8,9 +8,6 @@ from .agents import LLMAgent
 from .envs import TinyChatEnvironment
 from .evaluator import (
     EpisodeLLMEvaluator,
-    EvaluationDimension,
-    EvaluationForMultipleAgents,
-    EvaluationForTwoAgents,
     Evaluator,
     RuleBasedTerminatedEvaluator,
     TinyChatDimensions,
@@ -24,7 +21,7 @@ from .messages import (
     UnifiedChatBackground,
 )
 from .profile import BaseAgentProfile, BaseEnvironmentProfile, BaseRelationshipProfile
-from .server import TinyChatServer
+from .utils.server import TinyChatServer
 
 __all__ = [
     'LLMAgent',
@@ -41,9 +38,8 @@ __all__ = [
     'RuleBasedTerminatedEvaluator',
     'EpisodeLLMEvaluator',
     'TinyChatDimensions',
-    'EvaluationDimension',
     'EvaluationForTwoAgents',
     'EvaluationForMultipleAgents',
     'unweighted_aggregate_evaluate',
-    'ChatServer',
+    'TinyChatServer',
 ]

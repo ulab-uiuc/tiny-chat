@@ -13,6 +13,8 @@ class RelationshipType(IntEnum):
 
 
 class BaseAgentProfile(BaseModel):
+    model_config = {'protected_namespaces': (), 'extra': 'allow'}
+
     pk: str | None = Field(default='')
     first_name: str = Field()
     last_name: str = Field()
@@ -110,11 +112,9 @@ class BaseAgentProfile(BaseModel):
             return True
         return False
 
-    class Config:
-        extra = 'allow'
-
 
 class BaseEnvironmentProfile(BaseModel):
+    model_config = {'extra': 'allow'}
     pk: str | None = Field(default='')
     codename: str = Field(
         default='',
@@ -151,11 +151,9 @@ class BaseEnvironmentProfile(BaseModel):
         description='The tag of the environment, used for searching, could be convenient to document environment profiles from different works and sources',
     )
 
-    class Config:
-        extra = 'allow'
-
 
 class BaseRelationshipProfile(BaseModel):
+    model_config = {'extra': 'allow'}
     pk: str | None = Field(default='')
     agent_1_id: str = Field()
     agent_2_id: str = Field()
@@ -167,6 +165,3 @@ class BaseRelationshipProfile(BaseModel):
         default='',
         description='The tag of the relationship, used for searching, could be convenient to document relationship profiles from different works and sources',
     )
-
-    class Config:
-        extra = 'allow'

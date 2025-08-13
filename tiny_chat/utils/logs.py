@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Self
 
-from tiny_chat.profile import AgentProfile
+from tiny_chat.profile import BaseAgentProfile
 
 
 class BaseEpisodeLog(BaseModel):
@@ -50,8 +50,8 @@ class BaseEpisodeLog(BaseModel):
 
         return self
 
-    def render_for_humans(self) -> tuple[list[AgentProfile], list[str]]:
-        agent_profiles = [AgentProfile.get(pk=uuid_str) for uuid_str in self.agents]
+    def render_for_humans(self) -> tuple[list[BaseAgentProfile], list[str]]:
+        agent_profiles = [BaseAgentProfile.get(pk=uuid_str) for uuid_str in self.agents]
         messages_and_rewards = []
 
         for idx, turn in enumerate(self.messages):
@@ -68,7 +68,6 @@ class BaseEpisodeLog(BaseModel):
     def _process_turn_messages(
         self, turn: list[tuple[str, str, str]], turn_idx: int
     ) -> list[str]:
-        """处理单轮对话消息"""
         messages_in_this_turn = []
 
         if turn_idx == 0:
