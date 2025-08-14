@@ -22,7 +22,7 @@ from .messages import (
     SimpleMessage,
     UnifiedChatBackground,
 )
-from .profile import BaseAgentProfile, BaseEnvironmentProfile, BaseRelationshipProfile
+from .profiles import BaseAgentProfile, BaseEnvironmentProfile, BaseRelationshipProfile
 from .utils.server import TinyChatServer
 
 __all__ = [

@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
 from tiny_chat.messages import MessengerMixin
-from tiny_chat.profile import BaseAgentProfile
+from tiny_chat.profiles import BaseAgentProfile
 
 ObsType = TypeVar('ObsType')
 ActType = TypeVar('ActType')
