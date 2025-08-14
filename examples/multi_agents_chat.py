@@ -3,7 +3,7 @@ import os
 import sys
 from pathlib import Path
 
-from tiny_chat.messages import UnifiedChatBackground
+from tiny_chat.messages import TinyChatBackground
 from tiny_chat.utils.server import TinyChatServer
 
 # Add the project root to Python path
@@ -45,7 +45,7 @@ async def main() -> None:
     ]
 
     # Create background object
-    background = UnifiedChatBackground(
+    background = TinyChatBackground(
         scenario='Three friends catching up over coffee',
         agent_configs=[
             {

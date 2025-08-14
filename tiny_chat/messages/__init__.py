@@ -9,7 +9,7 @@ from .messages import (
     ScriptInteraction,
     ScriptInteractionReturnType,
     SimpleMessage,
-    UnifiedChatBackground,
+    TinyChatBackground,
 )
 
 __all__ = [
@@ -22,6 +22,6 @@ __all__ = [
     'AgentAction',
     'ScriptInteraction',
     'ScriptInteractionReturnType',
-    'UnifiedChatBackground',
+    'TinyChatBackground',
     'MessengerMixin',
 ]

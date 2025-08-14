@@ -9,20 +9,11 @@ ActionType = Literal['none', 'speak', 'non-verbal communication', 'action', 'lea
 
 
 class Message(BaseModel):
-    """
-    An interface for messages.
-    There is only one required method: to_natural_language
-    """
-
     def to_natural_language(self) -> str:
         raise NotImplementedError
 
 
 class SimpleMessage(Message):
-    """
-    A simple message with a single string field.
-    """
-
     message: str = Field(description='the message')
 
     def to_natural_language(self) -> str:
@@ -57,9 +48,7 @@ class ScriptBackground(Message):
         raise NotImplementedError
 
 
-class UnifiedChatBackground(ScriptBackground):
-    """A unified background class that handles both 2-agent and multi-agent scenarios."""
-
+class TinyChatBackground(ScriptBackground):
     scenario: str = Field(description='scenario of the episode')
     agent_configs: list[dict[str, Any]] = Field(
         description='configurations of all agents'
@@ -99,7 +88,7 @@ class UnifiedChatBackground(ScriptBackground):
 
     def create_agent_specific_background(
         self, target_agent_name: str, omniscient: bool = False
-    ) -> 'UnifiedChatBackground':
+    ) -> 'TinyChatBackground':
         """Create a background specific to one agent, optionally hiding other agents' goals."""
         agent_configs = []
 
@@ -116,9 +105,7 @@ class UnifiedChatBackground(ScriptBackground):
 
             agent_configs.append(new_config)
 
-        return UnifiedChatBackground(
-            scenario=self.scenario, agent_configs=agent_configs
-        )
+        return TinyChatBackground(scenario=self.scenario, agent_configs=agent_configs)
 
 
 class ScriptEnvironmentResponse(Message):
@@ -126,16 +113,8 @@ class ScriptEnvironmentResponse(Message):
         description='whether the conversation is terminated',
         default=False,
     )
-    p1_rate: float | tuple[float, dict[str, float]] | None = Field(
-        description='rating of participant 1, on the scale of 1 to 10',
-        default=None,
-    )
-    p2_rate: float | tuple[float, dict[str, float]] | None = Field(
-        description='rating of participant 2, on the scale of 1 to 10',
-        default=None,
-    )
     per_agent_scores: dict[str, float | tuple[float, dict[str, float]]] = Field(
-        description="ratings for arbitrary number of agents, keyed by agent name or agent index label (e.g., 'agent_1')",
+        description="ratings for arbitrary number of agents, keyed by agent name or agent index label (e.g., 'agent_1'). Scale of 1 to 10.",
         default_factory=dict,
     )
     comments: str | None = Field(
@@ -144,11 +123,26 @@ class ScriptEnvironmentResponse(Message):
     )
 
     def to_natural_language(self) -> str:
+        # Build agent ratings text
+        agent_ratings_text = ''
+        if self.per_agent_scores:
+            for agent_name, score in self.per_agent_scores.items():
+                if isinstance(score, tuple):
+                    main_score, sub_scores = score
+                    agent_ratings_text += f'Rating of {agent_name}: {main_score}'
+                    if sub_scores:
+                        sub_scores_str = ', '.join(
+                            [f'{k}: {v}' for k, v in sub_scores.items()]
+                        )
+                        agent_ratings_text += f' ({sub_scores_str})'
+                    agent_ratings_text += '\n'
+                else:
+                    agent_ratings_text += f'Rating of {agent_name}: {score}\n'
+
         reason_to_stop = format_docstring(
             f"""Environment response:
         {'The conversation is terminated.' if self.terminated else ''}
-        {'Rating of participant 1' + str(self.p1_rate) if self.p1_rate is not None else ''}
-        {'Rating of participant 2' + str(self.p2_rate) if self.p2_rate is not None else ''}
+        {agent_ratings_text.rstrip()}
         {self.comments if self.comments is not None else ''}
         """
         )

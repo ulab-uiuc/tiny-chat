@@ -20,7 +20,7 @@ from .messages import (
     Message,
     Observation,
     SimpleMessage,
-    UnifiedChatBackground,
+    TinyChatBackground,
 )
 from .profiles import BaseAgentProfile, BaseEnvironmentProfile, BaseRelationshipProfile
 from .utils.server import TinyChatServer
@@ -31,7 +31,7 @@ __all__ = [
     'SimpleMessage',
     'Observation',
     'AgentAction',
-    'UnifiedChatBackground',
+    'TinyChatBackground',
     'TinyChatEnvironment',
     'BaseAgentProfile',
     'BaseEnvironmentProfile',
