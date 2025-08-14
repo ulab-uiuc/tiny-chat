@@ -24,7 +24,7 @@ from tiny_chat.messages import (
     ScriptInteraction,
     ScriptInteractionReturnType,
 )
-from tiny_chat.profile import BaseEnvironmentProfile, BaseRelationshipProfile
+from tiny_chat.profiles import BaseEnvironmentProfile, BaseRelationshipProfile
 from tiny_chat.utils import format_docstring
 from tiny_chat.utils.logger import logger as log
 from tiny_chat.utils.template import (

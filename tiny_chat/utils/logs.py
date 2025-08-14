@@ -3,7 +3,7 @@ from typing import Any
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Self
 
-from tiny_chat.profile import BaseAgentProfile
+from tiny_chat.profiles import BaseAgentProfile
 
 
 class BaseEpisodeLog(BaseModel):

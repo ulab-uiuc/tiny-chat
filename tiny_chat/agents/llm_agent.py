@@ -3,7 +3,7 @@ from typing import Any
 
 from tiny_chat.generator import agenerate_action, agenerate_goal
 from tiny_chat.messages import AgentAction, Observation
-from tiny_chat.profile import BaseAgentProfile
+from tiny_chat.profiles import BaseAgentProfile
 
 from .base_agent import BaseAgent
 
