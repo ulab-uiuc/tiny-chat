@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel, validate_call
+from pydantic import BaseModel, Field, validate_call
 
 from tiny_chat.messages import AgentAction, Message, ScriptEnvironmentResponse
 
@@ -91,9 +91,11 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     def __init__(
         self,
         model_name: str,
+        response_format_class: type[T_eval_dim] | None = None,
     ) -> None:
         self.model_name = model_name
         self.prompt = ''
+        self.response_format_class = response_format_class or TinyChatDimensions  # type: ignore
 
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
@@ -128,12 +130,76 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                 ]
             )
 
+        if not history.strip():
+            log.debug('No conversation history available for evaluation')
+            return []
+
         try:
-            # TODO: Implement actual LLM generation here
+            from tiny_chat.generator import agenerate
+            from tiny_chat.generator.output_parsers import PydanticOutputParser
+
+            # Extract agent names from the conversation
+            agent_names = []
+            if messages:
+                for sender, _ in messages:
+                    if sender != 'Environment' and sender not in agent_names:
+                        agent_names.append(sender)
+
+            # Create the evaluation class dynamically
+            EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]  # type: ignore
+
+            # Generate evaluation using agenerate
+            response = await agenerate(
+                model_name=self.model_name,
+                template="""{history}
+
+Based on previous interactions, evaluate how well participants achieve their goals.
+Please following the format:
+{format_instructions}
+""",
+                input_values={'history': history},
+                output_parser=PydanticOutputParser(pydantic_object=EvaluationClass),
+                temperature=temperature,
+                structured_output=self.model_name.startswith('custom/structured'),
+            )
+
             response_list: list[
                 tuple[str, tuple[tuple[str, int | float | bool], str]]
             ] = []
+
+            # Convert response to expected format for multiple agents
+            for agent_name in agent_names:
+                if agent_name in response.agent_evaluations:
+                    agent_eval = response.agent_evaluations[agent_name]
+                    eval_dict = (
+                        agent_eval.dict()
+                        if hasattr(agent_eval, 'dict')
+                        else agent_eval.__dict__
+                    )
+
+                    for dimension, value in eval_dict.items():
+                        if isinstance(value, tuple) and len(value) >= 2:
+                            # Format: (description, score)
+                            score = value[1]
+                            reasoning = value[0]
+                        else:
+                            # Fallback: treat as score
+                            score = value
+                            reasoning = f'Score for {dimension}'
+
+                        response_list.append(
+                            (
+                                agent_name,
+                                (
+                                    (dimension, score),
+                                    reasoning,
+                                ),
+                            )
+                        )
+
+            log.debug(f'Generated evaluation for {len(agent_names)} agents')
             return response_list
+
         except Exception as e:
             print(e)
             log.debug(f'[red] Failed to generate environment response. {e}')
@@ -147,6 +213,21 @@ class TinyChatDimensions(BaseModel):
     goal_achievement: tuple[str, float] = ('Goal achievement', 0.0)
     social_intelligence: tuple[str, float] = ('Social intelligence', 0.0)
     communication_quality: tuple[str, float] = ('Communication quality', 0.0)
+
+
+class EvaluationForTwoAgents(BaseModel, Generic[T_eval_dim]):
+    """Evaluation structure for two agents"""
+
+    agent_1_evaluation: T_eval_dim
+    agent_2_evaluation: T_eval_dim
+
+
+class EvaluationForMultipleAgents(BaseModel, Generic[T_eval_dim]):
+    """Evaluation structure for multiple agents"""
+
+    agent_evaluations: dict[str, T_eval_dim] = Field(
+        description='Evaluations for each agent, keyed by agent name'
+    )
 
 
 @validate_call
