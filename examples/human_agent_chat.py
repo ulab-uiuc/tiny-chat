@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from tiny_chat.agents import LLMAgent
-from tiny_chat.messages import Observation, UnifiedChatBackground
+from tiny_chat.messages import Observation, TinyChatBackground
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
@@ -35,7 +35,7 @@ async def interactive_chat() -> None:
         model_name='gpt-4o-mini',
     )
 
-    _background = UnifiedChatBackground(
+    _background = TinyChatBackground(
         scenario='A helpful AI assistant chatting with a human',
         agent_configs=[
             {

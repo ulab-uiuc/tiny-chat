@@ -3,7 +3,7 @@ from .error_handler import (
     parsing_error_exponential_backoff,
 )
 from .format_handler import format_docstring
-from .logs import BaseEpisodeLog
+from .logs import BaseEpisodeLog, EpisodeLog
 from .template import TemplateManager
 
 __all__ = [
@@ -12,4 +12,5 @@ __all__ = [
     'parsing_error_exponential_backoff',
     'BaseEpisodeLog',
     'TemplateManager',
+    'EpisodeLog',
 ]

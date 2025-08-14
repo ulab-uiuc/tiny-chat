@@ -14,7 +14,7 @@ from tiny_chat.messages import (
     Observation,
     ScriptBackground,
     SimpleMessage,
-    UnifiedChatBackground,
+    TinyChatBackground,
 )
 
 TBackground = TypeVar('TBackground', bound=ScriptBackground)
@@ -63,11 +63,6 @@ class BaseChatEnivronment(ABC):
 
 
 class TinyChatEnvironment(BaseChatEnivronment):
-    """A unified chat environment that supports both 2-agent and multi-agent scenarios.
-
-    This environment uses a single unified background class and logic for all agent counts.
-    """
-
     def __init__(
         self,
         available_action_types: set[ActionType] = DEFAULT_ACTION_TYPES,
@@ -90,8 +85,8 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         self.agents: list[Any] = []
         self.agent_names: list[str] = []
-        self.background: UnifiedChatBackground | None = None
-        self.env_background: UnifiedChatBackground | None = None
+        self.background: TinyChatBackground | None = None
+        self.env_background: TinyChatBackground | None = None
         self.turn_number = 0
         self.current_agent_index = 0
         self.action_mask: list[bool] = []
@@ -223,7 +218,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
                 else f'A conversation between {num_agents} agents'
             )
 
-        self.env_background = UnifiedChatBackground(
+        self.env_background = TinyChatBackground(
             scenario=scenario,
             agent_configs=agent_configs,
         )
@@ -303,40 +298,6 @@ class TinyChatEnvironment(BaseChatEnivronment):
         return len(self.agent_names)
 
     @validate_call
-    def step(
-        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
-    ) -> tuple[
-        dict[str, Observation],
-        dict[str, float],
-        dict[str, bool],
-        dict[str, bool],
-        dict[str, dict[Any, Any]],
-    ]:
-        """Execute one step in the environment (synchronous version)."""
-        self.turn_number += 1
-
-        complied_actions = self._process_actions(actions)
-        self._mask_actions(complied_actions)
-        self._record_turn_messages(complied_actions)
-
-        # 同步评估
-        response = self._run_evaluators_sync()
-
-        self._update_state()
-
-        obs = _actions_to_natural_language(complied_actions)
-        observations = self._create_observations(obs)
-
-        rewards = self._build_rewards(response)
-        truncated = dict.fromkeys(self.agent_names, False)
-        terminated_flag = self.is_terminated() or bool(
-            getattr(response, 'terminated', False)
-        )
-        terminated_dict = dict.fromkeys(self.agent_names, terminated_flag)
-        info = self._build_info(response)
-
-        return observations, rewards, terminated_dict, truncated, info
-
     async def astep(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
     ) -> tuple[
@@ -466,53 +427,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
                     )
                 )
             )
-            if hasattr(response, 'p1_rate') and response.p1_rate is None:
-                response.p1_rate = terminal_response.p1_rate
-            if hasattr(response, 'p2_rate') and response.p2_rate is None:
-                response.p2_rate = terminal_response.p2_rate
-            if response.comments and terminal_response.comments:
-                response.comments += terminal_response.comments
-            elif terminal_response.comments:
-                response.comments = terminal_response.comments
-
-        return response
-
-    def _run_evaluators_sync(self) -> Any:
-        """Run evaluators synchronously and return response."""
-        if not self.evaluators:
-            return None
-
-        evaluator_results = self._run_sync_evaluators(self.evaluators)
-        response = unweighted_aggregate_evaluate(evaluator_results)
-
-        if response and response.terminated and self.terminal_evaluators:
-            terminal_results = self._run_sync_evaluators(self.terminal_evaluators)
-            terminal_response = unweighted_aggregate_evaluate(terminal_results)
             self._merge_terminal_response(response, terminal_response)
 
         return response
-
-    def _run_sync_evaluators(self, evaluators: list[Evaluator]) -> list[Any]:
-        """Helper method to run evaluators synchronously."""
-        results = []
-        for evaluator in evaluators:
-            if callable(evaluator):
-                result = evaluator.__call__(
-                    turn_number=self.turn_number,
-                    messages=self.inbox,
-                )
-            else:
-                result = asyncio.run(
-                    evaluator.__acall__(
-                        turn_number=self.turn_number,
-                        messages=self.inbox,
-                    )
-                )
-            if isinstance(result, list):
-                results.extend(result)
-            else:
-                results.append(result)
-        return results
 
     def _merge_terminal_response(self, response: Any, terminal_response: Any) -> None:
         """Helper method to merge terminal response into main response."""

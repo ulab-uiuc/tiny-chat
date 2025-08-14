@@ -163,3 +163,7 @@ class BaseEpisodeLog(BaseModel):
                 else self.reasoning
             ),
         }
+
+
+class EpisodeLog(BaseEpisodeLog):
+    pass

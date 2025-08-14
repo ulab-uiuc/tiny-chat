@@ -9,7 +9,7 @@ from tiny_chat.evaluator import (
     TinyChatDimensions,
 )
 from tiny_chat.generator import agenerate_goal
-from tiny_chat.messages import UnifiedChatBackground
+from tiny_chat.messages import TinyChatBackground
 
 
 class TinyChatServer:
@@ -19,7 +19,7 @@ class TinyChatServer:
     async def run_conversation(
         self,
         agent_configs: list[dict[str, Any]],
-        background: UnifiedChatBackground | None = None,
+        background: TinyChatBackground | None = None,
         max_turns: int = 20,
         enable_evaluation: bool = True,
         action_order: Literal[
