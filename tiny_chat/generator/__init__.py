@@ -1,4 +1,4 @@
-from .generate_template import agenerate_action, agenerate_goal
+from .generate_template import agenerate, agenerate_action, agenerate_goal
 from .output_parsers import (
     EnvResponse,
     ListOfIntOutputParser,
@@ -15,4 +15,5 @@ __all__ = [
     'ListOfIntOutputParser',
     'agenerate_action',
     'agenerate_goal',
+    'agenerate',
 ]

@@ -73,7 +73,7 @@ async def main() -> None:
         agent_configs=agent_configs,
         background=background,
         action_order='simultaneous',  # sequential, round-robin, simultaneous, random
-        max_turns=12,
+        max_turns=2,
         enable_evaluation=True,
     )
 

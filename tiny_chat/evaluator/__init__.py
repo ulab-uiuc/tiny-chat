@@ -1,5 +1,7 @@
 from .evaluators import (
     EpisodeLLMEvaluator,
+    EvaluationForMultipleAgents,
+    EvaluationForTwoAgents,
     Evaluator,
     RuleBasedTerminatedEvaluator,
     TinyChatDimensions,
@@ -10,6 +12,8 @@ __all__ = [
     'Evaluator',
     'TinyChatDimensions',
     'EpisodeLLMEvaluator',
+    'EvaluationForTwoAgents',
+    'EvaluationForMultipleAgents',
     'RuleBasedTerminatedEvaluator',
     'unweighted_aggregate_evaluate',
 ]
