@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, validate_call
 
 from tiny_chat.messages import AgentAction, Message, ScriptEnvironmentResponse
 
+from .dimensions import SotopiaDimensions
+
 log = logging.getLogger('evaluators')
 
 T_eval_dim = TypeVar('T_eval_dim', bound=BaseModel)
@@ -95,7 +97,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     ) -> None:
         self.model_name = model_name
         self.prompt = ''
-        self.response_format_class = response_format_class or TinyChatDimensions  # type: ignore
+        self.response_format_class = response_format_class or SotopiaDimensions  # type: ignore
 
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
@@ -213,13 +215,6 @@ class TinyChatDimensions(BaseModel):
     goal_achievement: tuple[str, float] = ('Goal achievement', 0.0)
     social_intelligence: tuple[str, float] = ('Social intelligence', 0.0)
     communication_quality: tuple[str, float] = ('Communication quality', 0.0)
-
-
-class EvaluationForTwoAgents(BaseModel, Generic[T_eval_dim]):
-    """Evaluation structure for two agents"""
-
-    agent_1_evaluation: T_eval_dim
-    agent_2_evaluation: T_eval_dim
 
 
 class EvaluationForMultipleAgents(BaseModel, Generic[T_eval_dim]):
