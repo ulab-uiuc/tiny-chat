@@ -7,11 +7,12 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel, Field, validate_call
 
 from tiny_chat.messages import AgentAction, Message, ScriptEnvironmentResponse
+
 from .dimensions import SotopiaDimensions
 
-log = logging.getLogger("evaluators")
+log = logging.getLogger('evaluators')
 
-T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
+T_eval_dim = TypeVar('T_eval_dim', bound=BaseModel)
 
 
 class Evaluator(abc.ABC):
@@ -51,18 +52,18 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         else:
             someone_leaving = False
             for source, msg in messages[::-1]:
-                if source == "Environment":
+                if source == 'Environment':
                     continue
-                if isinstance(msg, AgentAction) and msg.action_type == "leave":
+                if isinstance(msg, AgentAction) and msg.action_type == 'leave':
                     someone_leaving = True
                     break
         # Rule 3: If the conversation is stale for too long, terminate the conversation
         stale_count = 0
         for message in messages[::-1]:
-            if message[0] == "Environment":
+            if message[0] == 'Environment':
                 continue
             assert isinstance(message[1], AgentAction)
-            if message[1].action_type == "none":
+            if message[1].action_type == 'none':
                 stale_count += 1
             else:
                 break
@@ -77,8 +78,8 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         )
         return [
             (
-                "environment",
-                (("terminated", terminated), reasons_for_termination),
+                'environment',
+                (('terminated', terminated), reasons_for_termination),
             )
         ]
 
@@ -95,14 +96,14 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         response_format_class: type[T_eval_dim] | None = None,
     ) -> None:
         self.model_name = model_name
-        self.prompt = ""
+        self.prompt = ''
         self.response_format_class = response_format_class or SotopiaDimensions  # type: ignore
 
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         raise NotImplementedError(
-            "EpisodeLLMEvaluator is not implemented for synchronous evaluation"
+            'EpisodeLLMEvaluator is not implemented for synchronous evaluation'
         )
 
     @validate_call
@@ -110,7 +111,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         self,
         turn_number: int,
         messages: list[tuple[str, Message]] | None,
-        history: str = "",
+        history: str = '',
         temperature: float = 0.0,
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # filter did nothing
@@ -118,13 +119,13 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             messages_filtered = [
                 (x, y)
                 for x, y in messages
-                if "did nothing" not in y.to_natural_language()
+                if 'did nothing' not in y.to_natural_language()
             ]
-            history = "\n".join(
+            history = '\n'.join(
                 [
                     (
-                        f"{x} {y.to_natural_language()}"
-                        if x != "Environment"
+                        f'{x} {y.to_natural_language()}'
+                        if x != 'Environment'
                         else y.to_natural_language()
                     )
                     for x, y in messages_filtered
@@ -132,7 +133,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             )
 
         if not history.strip():
-            log.debug("No conversation history available for evaluation")
+            log.debug('No conversation history available for evaluation')
             return []
 
         try:
@@ -143,7 +144,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             agent_names = []
             if messages:
                 for sender, _ in messages:
-                    if sender != "Environment" and sender not in agent_names:
+                    if sender != 'Environment' and sender not in agent_names:
                         agent_names.append(sender)
 
             # Create the evaluation class dynamically
@@ -158,10 +159,10 @@ Based on previous interactions, evaluate how well participants achieve their goa
 Please following the format:
 {format_instructions}
 """,
-                input_values={"history": history},
+                input_values={'history': history},
                 output_parser=PydanticOutputParser(pydantic_object=EvaluationClass),
                 temperature=temperature,
-                structured_output=self.model_name.startswith("custom/structured"),
+                structured_output=self.model_name.startswith('custom/structured'),
             )
 
             response_list: list[
@@ -174,7 +175,7 @@ Please following the format:
                     agent_eval = response.agent_evaluations[agent_name]
                     eval_dict = (
                         agent_eval.dict()
-                        if hasattr(agent_eval, "dict")
+                        if hasattr(agent_eval, 'dict')
                         else agent_eval.__dict__
                     )
 
@@ -186,7 +187,7 @@ Please following the format:
                         else:
                             # Fallback: treat as score
                             score = value
-                            reasoning = f"Score for {dimension}"
+                            reasoning = f'Score for {dimension}'
 
                         response_list.append(
                             (
@@ -198,29 +199,29 @@ Please following the format:
                             )
                         )
 
-            log.debug(f"Generated evaluation for {len(agent_names)} agents")
+            log.debug(f'Generated evaluation for {len(agent_names)} agents')
             return response_list
 
         except Exception as e:
             print(e)
-            log.debug(f"[red] Failed to generate environment response. {e}")
+            log.debug(f'[red] Failed to generate environment response. {e}')
             return []
 
 
 class TinyChatDimensions(BaseModel):
     """Evaluation dimensions used in Sotopia"""
 
-    overall_score: tuple[str, float] = ("Overall score", 0.0)
-    goal_achievement: tuple[str, float] = ("Goal achievement", 0.0)
-    social_intelligence: tuple[str, float] = ("Social intelligence", 0.0)
-    communication_quality: tuple[str, float] = ("Communication quality", 0.0)
+    overall_score: tuple[str, float] = ('Overall score', 0.0)
+    goal_achievement: tuple[str, float] = ('Goal achievement', 0.0)
+    social_intelligence: tuple[str, float] = ('Social intelligence', 0.0)
+    communication_quality: tuple[str, float] = ('Communication quality', 0.0)
 
 
 class EvaluationForMultipleAgents(BaseModel, Generic[T_eval_dim]):
     """Evaluation structure for multiple agents"""
 
     agent_evaluations: dict[str, T_eval_dim] = Field(
-        description="Evaluations for each agent, keyed by agent name"
+        description='Evaluations for each agent, keyed by agent name'
     )
 
 
@@ -236,17 +237,17 @@ def _reduce(
         comments_dict[response[0]] += reasoning
     scores: list[float | int] = []
     for k, v in responses_dict.items():
-        if k == "terminated":
+        if k == 'terminated':
             assert all(isinstance(x, bool) for x in v)
             reduced_dict[k] = any(v)
         else:
             assert all(isinstance(x, float | int) for x in v)
             reduced_dict[k] = sum(v) / len(v)
             scores.append(reduced_dict[k])
-    if len(scores) and "overall_score" not in responses_dict:
+    if len(scores) and 'overall_score' not in responses_dict:
         scores = [x for x in scores if x is not None]
-        reduced_dict["overall_score"] = sum(scores) / len(scores)
-    comments = "\n".join([f"{k}: {v}" for k, v in comments_dict.items()])
+        reduced_dict['overall_score'] = sum(scores) / len(scores)
+    comments = '\n'.join([f'{k}: {v}' for k, v in comments_dict.items()])
     return reduced_dict, comments
 
 
@@ -267,35 +268,35 @@ def unweighted_aggregate_evaluate(
     for response in responses:
         responses_dict[response[0]].append(response[1])
 
-    environment_responses: tuple[dict[str, float | int | bool], str] = ({}, "")
+    environment_responses: tuple[dict[str, float | int | bool], str] = ({}, '')
     per_agent_responses: dict[str, tuple[dict[str, float | int | bool], str]] = {}
     for k, v in responses_dict.items():
-        if k == "environment":
+        if k == 'environment':
             environment_responses = _reduce(v)
         else:
             per_agent_responses[k] = _reduce(v)
 
     comments_parts: list[str] = []
     if environment_responses[1]:
-        comments_parts.append(f"Environment comments: {environment_responses[1]}")
+        comments_parts.append(f'Environment comments: {environment_responses[1]}')
     for agent_key, (_, cmt) in per_agent_responses.items():
         if cmt:
-            comments_parts.append(f"{agent_key} comments:\n{cmt}")
-    comments = "\n".join(comments_parts)
+            comments_parts.append(f'{agent_key} comments:\n{cmt}')
+    comments = '\n'.join(comments_parts)
     if (
-        "terminated" in environment_responses[0]
-        and environment_responses[0]["terminated"]
+        'terminated' in environment_responses[0]
+        and environment_responses[0]['terminated']
     ):
-        log.debug(f"[green] The conversation is terminated. {responses}")
+        log.debug(f'[green] The conversation is terminated. {responses}')
     per_agent_scores: dict[str, float | tuple[float, dict[str, float]]] = {}
     for agent_key, (score_dict, _) in per_agent_responses.items():
-        if "overall_score" in score_dict:
-            per_agent_scores[agent_key] = (score_dict["overall_score"], score_dict)
+        if 'overall_score' in score_dict:
+            per_agent_scores[agent_key] = (score_dict['overall_score'], score_dict)
 
     return ScriptEnvironmentResponse(
         terminated=(
-            environment_responses[0]["terminated"]
-            if "terminated" in environment_responses[0]
+            environment_responses[0]['terminated']
+            if 'terminated' in environment_responses[0]
             else False
         ),
         per_agent_scores=per_agent_scores,
