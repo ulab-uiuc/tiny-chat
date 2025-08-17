@@ -1,5 +1,6 @@
 import os
 from typing import cast
+from urllib.parse import urlparse
 
 from litellm import acompletion
 from litellm.litellm_core_utils.get_supported_openai_params import (
@@ -40,6 +41,91 @@ from tiny_chat.utils.template import (
     SCRIPT_SINGLE_STEP_TEMPLATE,
     SECOND_PERSON_NARRATIVE_TEMPLATE,
 )
+
+
+def _prepare_provider_config(model_name: str) -> tuple[str | None, str | None, str]:
+    """
+    Parse model_name into (api_base, api_key, effective_model_name).
+
+    Supported forms:
+    - OpenAI default:                    "gpt-4o-mini"
+    - vLLM (OpenAI-compatible):          "vllm://<model>@<base>" or "vllm://<base>@<model>"
+    - Together (OpenAI-compatible):      "together://<model>"
+    - Custom OpenAI-compatible proxy:    "custom://<model>@<base>" or legacy "custom/<model>@<base>"
+
+    Env vars:
+    - VLLM_API_KEY / TOGETHER_API_KEY / CUSTOM_API_KEY
+    """
+    api_base: str | None = None
+    api_key: str | None = None
+    effective_model = model_name
+
+    def _ensure_v1(url: str) -> str:
+        if not url:
+            return 'http:///v1'
+
+        if not url.startswith(('http://', 'https://')):
+            url = 'http://' + url
+
+        if url.endswith('/v1'):
+            return url
+        trimmed = url[:-1] if url.endswith('/') else url
+        return trimmed + '/v1'
+
+    # vLLM
+    if model_name.startswith('vllm://'):
+        payload = model_name[len('vllm://') :]
+        if '@' not in payload:
+            raise ValueError(
+                "vllm:// requires '<model>@<base_url>' or '<base_url>@<model>'"
+            )
+        a, b = payload.split('@', 1)
+        if urlparse(a).scheme or a.startswith(
+            ('http://', 'https://', 'localhost', '127.0.0.1')
+        ):
+            base, model = a, b
+        else:
+            model, base = a, b
+        api_base = _ensure_v1(base)
+        api_key = os.getenv('VLLM_API_KEY')  # optional
+        effective_model = model
+        return api_base, api_key, effective_model
+
+    # Together
+    if model_name.startswith('together://'):
+        model = model_name[len('together://') :]
+        api_base = 'https://api.together.xyz/v1'
+        api_key = os.getenv('TOGETHER_API_KEY')
+        effective_model = model
+        return api_base, api_key, effective_model
+
+    # Custom proxy (new scheme)
+    if model_name.startswith('custom://'):
+        payload = model_name[len('custom://') :]
+        if '@' not in payload:
+            raise ValueError("custom:// requires '<model>@<base_url>'")
+        model, base = payload.split('@', 1)
+        api_base = base
+        api_key = os.getenv('CUSTOM_API_KEY', 'EMPTY')
+        effective_model = model
+        return api_base, api_key, effective_model
+
+    # Custom proxy (legacy form)
+    if model_name.startswith('custom/'):
+        payload = model_name[len('custom/') :]
+        if '@' not in payload:
+            raise ValueError("custom/ requires '<model>@<base_url>'")
+        model, base = payload.split('@', 1)
+        api_base = base
+        api_key = os.getenv('CUSTOM_API_KEY', 'EMPTY')
+        effective_model = (
+            f'openai/{model}' if not model.startswith('openai/') else model
+        )
+        return api_base, api_key, effective_model
+
+    # default OpenAI
+    return None, None, model_name
+
 
 DEFAULT_BAD_OUTPUT_PROCESS_MODEL = 'gpt-4o-mini'
 
@@ -89,18 +175,10 @@ async def agenerate(
     for key, value in input_values.items():
         template = template.replace(f'{{{key}}}', str(value))
 
-    if model_name.startswith('custom'):
-        base_url, api_key = (
-            model_name.split('@')[1],
-            os.environ.get('CUSTOM_API_KEY', 'EMPTY'),
-        )
-        model_name = model_name.split('@')[0].replace('custom/', 'openai/')
-    else:
-        base_url = None
-        api_key = None
+    api_base, api_key, model_name = _prepare_provider_config(model_name)
 
     if structured_output:
-        if not base_url:
+        if not api_base:
             params = get_supported_openai_params(model=model_name)
             assert params is not None
             assert (
@@ -120,7 +198,7 @@ async def agenerate(
             response_format=output_parser.pydantic_object,
             drop_params=True,
             temperature=temperature,
-            base_url=base_url,
+            base_url=api_base,
             api_key=api_key,
         )
         result = response.choices[0].message.content
@@ -135,7 +213,7 @@ async def agenerate(
         messages=messages,
         temperature=temperature,
         drop_params=True,
-        api_base=base_url,
+        base_url=api_base,
         api_key=api_key,
     )
     result = response.choices[0].message.content
