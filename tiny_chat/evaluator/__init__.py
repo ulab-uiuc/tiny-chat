@@ -1,7 +1,6 @@
 from .evaluators import (
     EpisodeLLMEvaluator,
     EvaluationForMultipleAgents,
-    EvaluationForTwoAgents,
     Evaluator,
     RuleBasedTerminatedEvaluator,
     TinyChatDimensions,
