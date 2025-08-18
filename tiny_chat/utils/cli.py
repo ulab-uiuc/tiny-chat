@@ -4,7 +4,7 @@ import asyncio
 import json
 from typing import Any
 
-from tiny_chat.generator.generate_template import (
+from tiny_chat.generator.generate import (
     agenerate_action,
     agenerate_env_profile,
     agenerate_script,

@@ -9,7 +9,6 @@ from .envs import TinyChatEnvironment
 from .evaluator import (
     EpisodeLLMEvaluator,
     EvaluationForMultipleAgents,
-    EvaluationForTwoAgents,
     Evaluator,
     RuleBasedTerminatedEvaluator,
     TinyChatDimensions,

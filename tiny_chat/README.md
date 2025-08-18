@@ -52,7 +52,7 @@ Tiny Chat is a simplified multi-agent chat system inspired by [Sotopia](https://
 
 - **Purpose**: Generates conversation content using LLMs
 - **Key Components**:
-  - `generate_template.py`: Main generation functions using LiteLLM
+  - `generate.py`: Main generation functions using LiteLLM
   - `output_parsers.py`: Structured output parsing and validation
 - **Features**:
   - Agent action generation

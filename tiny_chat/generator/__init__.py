@@ -1,4 +1,4 @@
-from .generate_template import agenerate, agenerate_action, agenerate_goal
+from .generate import agenerate, agenerate_action, agenerate_goal
 from .output_parsers import (
     EnvResponse,
     ListOfIntOutputParser,
