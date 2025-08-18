@@ -1,4 +1,4 @@
-from .generate_template import agenerate, agenerate_action, agenerate_goal
+from .generate import agenerate, agenerate_action, agenerate_goal
 from .output_parsers import (
     EnvResponse,
     ListOfIntOutputParser,
@@ -8,12 +8,12 @@ from .output_parsers import (
 )
 
 __all__ = [
-    'EnvResponse',
-    'StrOutputParser',
-    'ScriptOutputParser',
-    'PydanticOutputParser',
-    'ListOfIntOutputParser',
-    'agenerate_action',
-    'agenerate_goal',
-    'agenerate',
+    "EnvResponse",
+    "StrOutputParser",
+    "ScriptOutputParser",
+    "PydanticOutputParser",
+    "ListOfIntOutputParser",
+    "agenerate_action",
+    "agenerate_goal",
+    "agenerate",
 ]
