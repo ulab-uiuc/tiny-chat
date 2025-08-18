@@ -44,7 +44,7 @@ class BaseChatEnivronment(ABC):
         pass
 
     @abstractmethod
-    def step(
+    def astep(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
     ) -> Any:
         pass
