@@ -188,7 +188,7 @@ print(f"Last modified: {info['last_modified']}")
 ### Using Custom Templates in Agent Generation
 
 ```python
-from tiny_chat.generator.generate_template import agenerate_action
+from tiny_chat.generator.generate import agenerate_action
 from tiny_chat.utils.template import TemplateManager
 
 async def generate_custom_action():
