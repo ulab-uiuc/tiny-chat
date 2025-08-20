@@ -69,13 +69,21 @@ async def main() -> None:
     print('Starting multi-agent conversation...')
     print('=' * 50)
 
-    await server.run_conversation(
+    episode_log = await server.run_conversation(
         agent_configs=agent_configs,
         background=background,
-        action_order='simultaneous',  # sequential, round-robin, simultaneous, random
+        action_order='simultaneous',
         max_turns=2,
         enable_evaluation=True,
+        return_log=True,
     )
+
+    if episode_log:
+        print('\n=== Episode Log Created ===')
+        print(f'Environment: {episode_log.environment}')
+        print(f'Agents: {episode_log.agents}')
+        print(f'Rewards: {episode_log.rewards}')
+        print(f'Average Score: {episode_log.get_average_score():.2f}')
 
 
 if __name__ == '__main__':

@@ -147,8 +147,12 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                     if sender != 'Environment' and sender not in agent_names:
                         agent_names.append(sender)
 
-            # Create the evaluation class dynamically
-            EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]  # type: ignore
+            class MultiAgentEvaluation(BaseModel):
+                agent_evaluations: dict[str, self.response_format_class] = Field(
+                    description='Evaluations for each agent, keyed by agent name'
+                )
+
+            EvaluationClass = MultiAgentEvaluation
 
             # Generate evaluation using agenerate
             response = await agenerate(
@@ -156,13 +160,20 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                 template="""{history}
 
 Based on previous interactions, evaluate how well participants achieve their goals.
-Please following the format:
+
+IMPORTANT: For each evaluation dimension, provide a tuple with exactly 2 elements:
+- First element: a single string containing all reasoning
+- Second element: a single integer score
+
+Example format for each dimension:
+"believability": ["The agent shows natural behavior and consistency", 8]
+
+Please follow the format:
 {format_instructions}
 """,
                 input_values={'history': history},
                 output_parser=PydanticOutputParser(pydantic_object=EvaluationClass),
                 temperature=temperature,
-                structured_output=self.model_name.startswith('custom/structured'),
             )
 
             response_list: list[
@@ -223,6 +234,9 @@ class EvaluationForMultipleAgents(BaseModel, Generic[T_eval_dim]):
     agent_evaluations: dict[str, T_eval_dim] = Field(
         description='Evaluations for each agent, keyed by agent name'
     )
+
+    class Config:
+        title = 'MultiAgentEvaluation'
 
 
 @validate_call

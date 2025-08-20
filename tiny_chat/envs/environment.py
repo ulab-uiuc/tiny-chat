@@ -557,12 +557,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
         if self.inbox:
             summary += 'Conversation history:\n'
             for source, message in self.inbox:
-                if (
-                    source != 'Environment'
-                    or not message.to_natural_language().startswith('Turn #')
-                ):
-                    summary += f'{source}: {message.to_natural_language()}\n'
-
+                if source == 'Environment':
+                    continue
+                summary += f'{source}: {message.to_natural_language()}\n'
         return summary
 
     def render(self, mode: str = 'human') -> None:

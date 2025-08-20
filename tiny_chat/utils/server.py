@@ -10,6 +10,7 @@ from tiny_chat.evaluator import (
 )
 from tiny_chat.generator import agenerate_goal
 from tiny_chat.messages import TinyChatBackground
+from tiny_chat.utils import EpisodeLog
 
 
 class TinyChatServer:
@@ -26,7 +27,8 @@ class TinyChatServer:
             'simultaneous', 'round-robin', 'sequential', 'random'
         ] = 'simultaneous',
         scenario: str | None = None,
-    ) -> None:
+        return_log: bool = False,
+    ) -> EpisodeLog | None:
         evaluators: list[Evaluator] = [
             RuleBasedTerminatedEvaluator(max_turn_number=max_turns)
         ]
@@ -74,6 +76,33 @@ class TinyChatServer:
 
         print('\n=== Full Conversation Summary ===')
         print(env.get_conversation_summary())
+        if return_log:
+            rewards = []
+            for config in agent_configs:
+                agent_name = config['name']
+                score_key = f'{agent_name}_score'
+                details_key = f'{agent_name}_details'
+
+                if score_key in evaluation_results:
+                    rewards.append(
+                        (
+                            evaluation_results[score_key],
+                            evaluation_results.get(details_key, {}),
+                        )
+                    )
+                else:
+                    rewards.append((0.0, {}))
+
+            return EpisodeLog(
+                environment='TinyChat',
+                agents=[c['name'] for c in agent_configs],
+                messages=[],  # 可以从 env.get_conversation_history() 获取，如果有这个方法
+                rewards=rewards,
+                reasoning=evaluation_results.get('comments', ''),
+                models=[c.get('model', 'gpt-4o-mini') for c in agent_configs],
+            )
+
+        return None
 
     async def _create_agents(
         self, agent_configs: list[dict[str, Any]], background: Any | None = None
