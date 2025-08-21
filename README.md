@@ -7,6 +7,3 @@ curl -sSL https://install.python-poetry.org | python3
 poetry install
 ```
 
-## What's new:
-
-1. You can find some examples [here](/tiny-chat/examples/README.md).

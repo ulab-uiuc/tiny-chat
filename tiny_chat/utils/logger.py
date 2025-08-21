@@ -1,5 +1,7 @@
 import logging
-from logging import StreamHandler
+import os
+from logging import FileHandler, StreamHandler
+from pathlib import Path
 
 from beartype.typing import Any, Dict, List, Literal, Mapping, Union
 from termcolor import colored
@@ -59,6 +61,10 @@ console_formatter = ColoredFormatter(
     datefmt='%H:%M:%S',
 )
 
+file_formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
+)
+
 
 def get_console_handler() -> Any:
     """
@@ -70,6 +76,45 @@ def get_console_handler() -> Any:
     return console_handler
 
 
+def get_file_handler(log_file_path: str = 'logs/tiny_chat.log') -> Any:
+    """
+    Returns a file handler for logging.
+    """
+    # 确保日志目录存在
+    log_dir = Path(log_file_path).parent
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    file_handler = FileHandler(log_file_path, encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(file_formatter)
+    return file_handler
+
+
+def setup_logging(log_file_path: str = None, log_level: str = 'INFO') -> None:
+    """
+    设置统一的日志配置
+    """
+    # 获取根logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, log_level.upper()))
+
+    # 清除现有的handlers，避免重复
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    # 添加console handler
+    root_logger.addHandler(get_console_handler())
+
+    # 如果指定了文件路径，添加文件handler
+    if log_file_path:
+        root_logger.addHandler(get_file_handler(log_file_path))
+
+
+# 创建tiny_chat专用的logger
 logger = logging.getLogger('tiny_chat')
 logger.setLevel(logging.DEBUG)
-logger.addHandler(get_console_handler())
+# 不设置propagate=False，让日志可以向上传播到根logger
+# 这样所有子logger都能通过根logger输出日志
+
+# 不为tiny_chat logger添加重复的handler，避免重复输出
+# 让它通过根logger的handlers输出
