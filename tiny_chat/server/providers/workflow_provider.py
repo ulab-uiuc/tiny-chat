@@ -1,15 +1,15 @@
-import httpx
 import logging
 from typing import Any
 
-from .base import BaseModelProvider, ModelResponse
+import httpx
+
 from ..config import ModelProviderConfig
+from .base import BaseModelProvider, ModelResponse
 
 logger = logging.getLogger(__name__)
 
 
 class RequestHandler:
-
     def __init__(self, config: dict[str, Any]):
         self.config = config
 
@@ -18,7 +18,6 @@ class RequestHandler:
 
 
 class ResponseParser:
-
     def __init__(self, config: dict[str, Any]):
         self.config = config
 
@@ -27,16 +26,15 @@ class ResponseParser:
 
 
 class WorkflowProvider(BaseModelProvider):
-
     _request_handlers: dict[str, type[RequestHandler]] = {}
     _response_parsers: dict[str, type[ResponseParser]] = {}
 
     def __init__(self, config: ModelProviderConfig):
         super().__init__(config)
 
-        custom_config = getattr(config, "custom_config", {})
-        self.request_handler_type = custom_config.get("request_handler", "default")
-        self.response_parser_type = custom_config.get("response_parser", "default")
+        custom_config = getattr(config, 'custom_config', {})
+        self.request_handler_type = custom_config.get('request_handler', 'default')
+        self.response_parser_type = custom_config.get('response_parser', 'default')
 
         self.request_handler = self._create_request_handler(custom_config)
         self.response_parser = self._create_response_parser(custom_config)
@@ -44,12 +42,12 @@ class WorkflowProvider(BaseModelProvider):
     @classmethod
     def register_request_handler(cls, name: str, handler_class: type[RequestHandler]):
         cls._request_handlers[name] = handler_class
-        logger.info(f"Registered request handler: {name}")
+        logger.info(f'Registered request handler: {name}')
 
     @classmethod
     def register_response_parser(cls, name: str, parser_class: type[ResponseParser]):
         cls._response_parsers[name] = parser_class
-        logger.info(f"Registered response parser: {name}")
+        logger.info(f'Registered response parser: {name}')
 
     def _create_request_handler(self, config: dict[str, Any]) -> RequestHandler:
         handler_class = self._request_handlers.get(self.request_handler_type)
@@ -80,8 +78,8 @@ class WorkflowProvider(BaseModelProvider):
             return self.response_parser.parse(raw_response)
 
         except Exception as e:
-            logger.error(f"WorkflowProvider generation failed: {e}")
-            raise RuntimeError(f"Generation failed: {e}") from e
+            logger.error(f'WorkflowProvider generation failed: {e}')
+            raise RuntimeError(f'Generation failed: {e}') from e
 
     async def generate_chat(
         self,
@@ -90,7 +88,7 @@ class WorkflowProvider(BaseModelProvider):
         max_tokens: int | None = None,
         **kwargs,
     ) -> ModelResponse:
-        prompt = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+        prompt = '\n'.join([f"{msg['role']}: {msg['content']}" for msg in messages])
 
         return await self.generate(
             prompt=prompt, temperature=temperature, max_tokens=max_tokens, **kwargs
@@ -98,19 +96,18 @@ class WorkflowProvider(BaseModelProvider):
 
     async def check_health(self) -> bool:
         try:
-            await self.generate(prompt="test", max_tokens=1)
+            await self.generate(prompt='test', max_tokens=1)
             return True
         except Exception:
             return False
 
 
 class DefaultRequestHandler(RequestHandler):
-
     async def process(self, prompt: str, **kwargs) -> dict[str, Any]:
-        endpoint = self.config.get("endpoint", "")
-        headers = self.config.get("headers", {})
+        endpoint = self.config.get('endpoint', '')
+        headers = self.config.get('headers', {})
 
-        request_data = {"prompt": prompt, **kwargs}
+        request_data = {'prompt': prompt, **kwargs}
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -122,67 +119,64 @@ class DefaultRequestHandler(RequestHandler):
 
 
 class DefaultResponseParser(ResponseParser):
-
     def parse(self, raw_response: dict[str, Any]) -> ModelResponse:
         content = (
-            raw_response.get("output")
-            or raw_response.get("text")
-            or raw_response.get("response")
-            or raw_response.get("content")
+            raw_response.get('output')
+            or raw_response.get('text')
+            or raw_response.get('response')
+            or raw_response.get('content')
             or str(raw_response)
         )
 
         return ModelResponse(
             content=content,
-            usage=raw_response.get("usage"),
-            model=raw_response.get("model", "flexible"),
-            metadata={"provider": "flexible", "raw_response": raw_response},
+            usage=raw_response.get('usage'),
+            model=raw_response.get('model', 'flexible'),
+            metadata={'provider': 'flexible', 'raw_response': raw_response},
         )
 
 
 # example: for reward model eval
 class SFTRewardRequestHandler(RequestHandler):
-
     async def process(self, prompt: str, **kwargs) -> dict[str, Any]:
-        sft_endpoint = self.config.get("sft_endpoint")
-        reward_endpoint = self.config.get("reward_endpoint")
-        headers = self.config.get("headers", {})
-        num_candidates = kwargs.get("num_candidates", 10)
+        sft_endpoint = self.config.get('sft_endpoint')
+        reward_endpoint = self.config.get('reward_endpoint')
+        headers = self.config.get('headers', {})
+        num_candidates = kwargs.get('num_candidates', 10)
 
         async with httpx.AsyncClient() as client:
             sft_response = await client.post(
                 sft_endpoint,
                 json={
-                    "prompt": prompt,
-                    "num_return_sequences": num_candidates,
-                    "temperature": kwargs.get("temperature", 0.8),
-                    "max_length": kwargs.get("max_tokens", 100),
+                    'prompt': prompt,
+                    'num_return_sequences': num_candidates,
+                    'temperature': kwargs.get('temperature', 0.8),
+                    'max_length': kwargs.get('max_tokens', 100),
                 },
                 headers=headers,
             )
             sft_data = sft_response.json()
-            candidates = sft_data.get("generations", [])
+            candidates = sft_data.get('generations', [])
 
         async with httpx.AsyncClient() as client:
             reward_response = await client.post(
                 reward_endpoint,
-                json={"prompt": prompt, "responses": candidates},
+                json={'prompt': prompt, 'responses': candidates},
                 headers=headers,
             )
             reward_data = reward_response.json()
-            scores = reward_data.get("scores", [])
+            scores = reward_data.get('scores', [])
 
-        return {"candidates": candidates, "scores": scores, "prompt": prompt}
+        return {'candidates': candidates, 'scores': scores, 'prompt': prompt}
 
 
 class SFTRewardResponseParser(ResponseParser):
-
     def parse(self, raw_response: dict[str, Any]) -> ModelResponse:
-        candidates = raw_response.get("candidates", [])
-        scores = raw_response.get("scores", [])
+        candidates = raw_response.get('candidates', [])
+        scores = raw_response.get('scores', [])
 
         if not candidates or not scores:
-            raise ValueError("No valid candidates or scores received")
+            raise ValueError('No valid candidates or scores received')
 
         best_idx = max(range(len(scores)), key=lambda i: scores[i])
         best_response = candidates[best_idx]
@@ -191,19 +185,19 @@ class SFTRewardResponseParser(ResponseParser):
         return ModelResponse(
             content=best_response,
             usage={
-                "candidates_generated": len(candidates),
-                "total_tokens": sum(len(c.split()) for c in candidates),
+                'candidates_generated': len(candidates),
+                'total_tokens': sum(len(c.split()) for c in candidates),
             },
-            model="sft-reward",
+            model='sft-reward',
             metadata={
-                "best_score": best_score,
-                "all_scores": scores,
-                "all_candidates": candidates,
-                "selection_index": best_idx,
-                "provider": "flexible_sft_reward",
+                'best_score': best_score,
+                'all_scores': scores,
+                'all_candidates': candidates,
+                'selection_index': best_idx,
+                'provider': 'flexible_sft_reward',
             },
         )
 
 
-WorkflowProvider.register_request_handler("sft_reward", SFTRewardRequestHandler)
-WorkflowProvider.register_response_parser("sft_reward", SFTRewardResponseParser)
+WorkflowProvider.register_request_handler('sft_reward', SFTRewardRequestHandler)
+WorkflowProvider.register_response_parser('sft_reward', SFTRewardResponseParser)

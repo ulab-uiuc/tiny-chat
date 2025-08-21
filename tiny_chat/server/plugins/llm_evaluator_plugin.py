@@ -14,11 +14,11 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
 
-        self.model_provider: BaseModelProvider | None = config.get("model_provider")
-        self.model_name: str = config.get("model_name", "gpt-4o-mini")
-        self.dimensions = config.get("dimensions", "sotopia")
+        self.model_provider: BaseModelProvider | None = config.get('model_provider')
+        self.model_name: str = config.get('model_name', 'gpt-4o-mini')
+        self.dimensions = config.get('dimensions', 'sotopia')
 
-        if self.dimensions == "sotopia":
+        if self.dimensions == 'sotopia':
             self.evaluator = EpisodeLLMEvaluator[TinyChatDimensions](
                 model_name=self.model_name
             )
@@ -30,7 +30,7 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
 
     @property
     def plugin_type(self) -> str:
-        return "llm"
+        return 'llm'
 
     async def evaluate(
         self, turn_number: int, messages: List[Tuple[str, Any]]
@@ -39,7 +39,7 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
         try:
             converted_messages = []
             for sender, msg in messages:
-                if hasattr(msg, "to_natural_language"):
+                if hasattr(msg, 'to_natural_language'):
                     converted_messages.append((sender, msg))
                 else:
                     from ...messages import SimpleMessage
@@ -50,11 +50,11 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
                 turn_number=turn_number, messages=converted_messages
             )
 
-            logger.debug(f"LLM evaluator returned {len(result)} results")
+            logger.debug(f'LLM evaluator returned {len(result)} results')
             return result
 
         except Exception as e:
-            logger.error(f"LLM evaluation failed: {e}")
+            logger.error(f'LLM evaluation failed: {e}')
             return []
 
     def get_terminal_evaluator(self) -> EpisodeLLMEvaluator[TinyChatDimensions]:
