@@ -54,7 +54,7 @@ models:
   #   timeout: 30
 
 # Default model to use
-default_model: gpt-4o
+default_model: gpt-4o-mini
 
 # Evaluator configuration
 evaluators:

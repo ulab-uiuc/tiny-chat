@@ -2,15 +2,14 @@
 Model providers for TinyChat Server
 """
 
-from .base import BaseModelProvider, ModelResponse
-from .custom_provider import CustomProvider
+from .base import BaseModelProvider
 from .factory import ModelProviderFactory
 from .litellm_provider import LiteLLMProvider
+from .workflow_provider import WorkflowProvider
 
 __all__ = [
-    'BaseModelProvider',
-    'ModelResponse',
-    'LiteLLMProvider',
-    'CustomProvider',
-    'ModelProviderFactory',
+    "BaseModelProvider",
+    "LiteLLMProvider",
+    "WorkflowProvider",
+    "ModelProviderFactory",
 ]

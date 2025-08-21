@@ -26,7 +26,7 @@ from tiny_chat.messages import (
     ScriptInteractionReturnType,
 )
 from tiny_chat.profiles import BaseEnvironmentProfile, BaseRelationshipProfile
-from tiny_chat.utils import api_calling_error_exponential_backoff, format_docstring
+from tiny_chat.utils import format_docstring
 from tiny_chat.utils.logger import logger as log
 from tiny_chat.utils.template import (
     ACTION_NORMAL_TEMPLATE,
@@ -155,7 +155,6 @@ async def format_bad_output(
     return reformatted_output
 
 
-@api_calling_error_exponential_backoff
 @validate_call
 async def agenerate(
     model_name: str,
@@ -239,7 +238,6 @@ async def agenerate(
     return parsed_result
 
 
-@api_calling_error_exponential_backoff
 @validate_call
 async def agenerate_env_profile(
     model_name: str,
@@ -266,7 +264,6 @@ async def agenerate_env_profile(
     )
 
 
-@api_calling_error_exponential_backoff
 @validate_call
 async def agenerate_relationship_profile(
     model_name: str,
@@ -290,7 +287,6 @@ async def agenerate_relationship_profile(
     )
 
 
-@api_calling_error_exponential_backoff
 @validate_call
 async def agenerate_action(
     model_name: str,
