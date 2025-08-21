@@ -1,0 +1,44 @@
+
+models:
+  simple-custom:
+    name: simple-custom
+    type: flexible
+    custom_config:
+      request_handler: "default"
+      response_parser: "default"
+      endpoint: "https://your-api.com/generate"
+      headers:
+        Authorization: "Bearer ${YOUR_API_KEY}"
+        Content-Type: "application/json"
+
+  sft-reward-combo:
+    name: sft-reward-combo
+    type: flexible
+    custom_config:
+      request_handler: "sft_reward"
+      response_parser: "sft_reward"
+      sft_endpoint: "https://your-sft-api.com/generate"
+      reward_endpoint: "https://your-reward-api.com/score"
+      headers:
+        Authorization: "Bearer ${YOUR_API_KEY}"
+        Content-Type: "application/json"
+
+  third-party-api:
+    name: third-party-api
+    type: workflow
+    custom_config:
+      request_handler: "custom_format"
+      response_parser: "custom_format"
+      endpoint: "https://api.thirdparty.com/v2/completion"
+      headers:
+        X-API-Key: "${THIRD_PARTY_KEY}"
+        Accept: "application/json"
+
+default_model: sft-reward-combo
+
+evaluators:
+  - type: llm
+    enabled: true
+    model: sft-reward-combo
+    config:
+      dimensions: sotopia

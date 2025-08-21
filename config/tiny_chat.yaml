@@ -54,7 +54,7 @@ models:
   #   timeout: 30
 
 # Default model to use
-default_model: gpt-4o-mini
+default_model: gpt-4o
 
 # Evaluator configuration
 evaluators:
@@ -97,7 +97,3 @@ api:
   cors_origins:
     - "*"
   rate_limit: "100/minute"
-
-# Monitoring configuration
-enable_metrics: true
-metrics_port: 9090

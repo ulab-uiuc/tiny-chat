@@ -41,6 +41,7 @@ from tiny_chat.utils.template import (
     SCRIPT_SINGLE_STEP_TEMPLATE,
     SECOND_PERSON_NARRATIVE_TEMPLATE,
 )
+from tiny_chat.utils import api_calling_error_exponential_backoff
 
 
 def _prepare_provider_config(model_name: str) -> tuple[str | None, str | None, str]:
@@ -62,64 +63,64 @@ def _prepare_provider_config(model_name: str) -> tuple[str | None, str | None, s
 
     def _ensure_v1(url: str) -> str:
         if not url:
-            return 'http:///v1'
+            return "http:///v1"
 
-        if not url.startswith(('http://', 'https://')):
-            url = 'http://' + url
+        if not url.startswith(("http://", "https://")):
+            url = "http://" + url
 
-        if url.endswith('/v1'):
+        if url.endswith("/v1"):
             return url
-        trimmed = url[:-1] if url.endswith('/') else url
-        return trimmed + '/v1'
+        trimmed = url[:-1] if url.endswith("/") else url
+        return trimmed + "/v1"
 
     # vLLM
-    if model_name.startswith('vllm://'):
-        payload = model_name[len('vllm://') :]
-        if '@' not in payload:
+    if model_name.startswith("vllm://"):
+        payload = model_name[len("vllm://") :]
+        if "@" not in payload:
             raise ValueError(
                 "vllm:// requires '<model>@<base_url>' or '<base_url>@<model>'"
             )
-        a, b = payload.split('@', 1)
+        a, b = payload.split("@", 1)
         if urlparse(a).scheme or a.startswith(
-            ('http://', 'https://', 'localhost', '127.0.0.1')
+            ("http://", "https://", "localhost", "127.0.0.1")
         ):
             base, model = a, b
         else:
             model, base = a, b
         api_base = _ensure_v1(base)
-        api_key = os.getenv('VLLM_API_KEY')  # optional
+        api_key = os.getenv("VLLM_API_KEY")  # optional
         effective_model = model
         return api_base, api_key, effective_model
 
     # Together
-    if model_name.startswith('together://'):
-        model = model_name[len('together://') :]
-        api_base = 'https://api.together.xyz/v1'
-        api_key = os.getenv('TOGETHER_API_KEY')
+    if model_name.startswith("together://"):
+        model = model_name[len("together://") :]
+        api_base = "https://api.together.xyz/v1"
+        api_key = os.getenv("TOGETHER_API_KEY")
         effective_model = model
         return api_base, api_key, effective_model
 
     # Custom proxy (new scheme)
-    if model_name.startswith('custom://'):
-        payload = model_name[len('custom://') :]
-        if '@' not in payload:
+    if model_name.startswith("custom://"):
+        payload = model_name[len("custom://") :]
+        if "@" not in payload:
             raise ValueError("custom:// requires '<model>@<base_url>'")
-        model, base = payload.split('@', 1)
+        model, base = payload.split("@", 1)
         api_base = base
-        api_key = os.getenv('CUSTOM_API_KEY', 'EMPTY')
+        api_key = os.getenv("CUSTOM_API_KEY", "EMPTY")
         effective_model = model
         return api_base, api_key, effective_model
 
     # Custom proxy (legacy form)
-    if model_name.startswith('custom/'):
-        payload = model_name[len('custom/') :]
-        if '@' not in payload:
+    if model_name.startswith("custom/"):
+        payload = model_name[len("custom/") :]
+        if "@" not in payload:
             raise ValueError("custom/ requires '<model>@<base_url>'")
-        model, base = payload.split('@', 1)
+        model, base = payload.split("@", 1)
         api_base = base
-        api_key = os.getenv('CUSTOM_API_KEY', 'EMPTY')
+        api_key = os.getenv("CUSTOM_API_KEY", "EMPTY")
         effective_model = (
-            f'openai/{model}' if not model.startswith('openai/') else model
+            f"openai/{model}" if not model.startswith("openai/") else model
         )
         return api_base, api_key, effective_model
 
@@ -127,7 +128,7 @@ def _prepare_provider_config(model_name: str) -> tuple[str | None, str | None, s
     return None, None, model_name
 
 
-DEFAULT_BAD_OUTPUT_PROCESS_MODEL = 'gpt-4o-mini'
+DEFAULT_BAD_OUTPUT_PROCESS_MODEL = "gpt-4o-mini"
 
 
 @validate_call
@@ -140,21 +141,22 @@ async def format_bad_output(
     template = BAD_OUTPUT_REFORMAT_TEMPLATE
 
     input_values = {
-        'ill_formed_output': ill_formed_output,
-        'format_instructions': format_instructions,
+        "ill_formed_output": ill_formed_output,
+        "format_instructions": format_instructions,
     }
     content = template.format(**input_values)
     response = await acompletion(
         model=model_name,
-        response_format={'type': 'json_object'},
-        messages=[{'role': 'user', 'content': content}],
+        response_format={"type": "json_object"},
+        messages=[{"role": "user", "content": content}],
     )
     reformatted_output = response.choices[0].message.content
     assert isinstance(reformatted_output, str)
-    log.info(f'Reformated output: {reformatted_output}')
+    log.info(f"Reformated output: {reformatted_output}")
     return reformatted_output
 
 
+@api_calling_error_exponential_backoff
 @validate_call
 async def agenerate(
     model_name: str,
@@ -167,13 +169,13 @@ async def agenerate(
     use_fixed_model_version: bool = True,
 ) -> OutputType:
     """Generate text using LiteLLM instead of Langchain."""
-    if 'format_instructions' not in input_values:
-        input_values['format_instructions'] = output_parser.get_format_instructions()
+    if "format_instructions" not in input_values:
+        input_values["format_instructions"] = output_parser.get_format_instructions()
 
     template = format_docstring(template)
 
     for key, value in input_values.items():
-        template = template.replace(f'{{{key}}}', str(value))
+        template = template.replace(f"{{{key}}}", str(value))
 
     api_base, api_key, model_name = _prepare_provider_config(model_name)
 
@@ -182,16 +184,16 @@ async def agenerate(
             params = get_supported_openai_params(model=model_name)
             assert params is not None
             assert (
-                'response_format' in params
-            ), 'response_format is not supported in this model'
+                "response_format" in params
+            ), "response_format is not supported in this model"
             assert supports_response_schema(
                 model=model_name
-            ), 'response_schema is not supported in this model'
-        messages = [{'role': 'user', 'content': template}]
+            ), "response_schema is not supported in this model"
+        messages = [{"role": "user", "content": template}]
 
         assert isinstance(
             output_parser, PydanticOutputParser
-        ), 'structured output only supported in PydanticOutputParser'
+        ), "structured output only supported in PydanticOutputParser"
         response = await acompletion(
             model=model_name,
             messages=messages,
@@ -202,11 +204,11 @@ async def agenerate(
             api_key=api_key,
         )
         result = response.choices[0].message.content
-        log.info(f'Generated result: {result}')
+        log.info(f"Generated result: {result}")
         assert isinstance(result, str)
         return cast(OutputType, output_parser.parse(result))
 
-    messages = [{'role': 'user', 'content': template}]
+    messages = [{"role": "user", "content": template}]
 
     response = await acompletion(
         model=model_name,
@@ -223,8 +225,8 @@ async def agenerate(
         if isinstance(output_parser, ScriptOutputParser):
             raise e
         log.debug(
-            f'[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse',
-            extra={'markup': True},
+            f"[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse",
+            extra={"markup": True},
         )
         reformat_result = await format_bad_output(
             result,
@@ -234,15 +236,16 @@ async def agenerate(
         )
         parsed_result = output_parser.parse(reformat_result)
 
-    log.info(f'Generated result: {parsed_result}')
+    log.info(f"Generated result: {parsed_result}")
     return parsed_result
 
 
+@api_calling_error_exponential_backoff
 @validate_call
 async def agenerate_env_profile(
     model_name: str,
-    inspiration_prompt: str = 'asking my boyfriend to stop being friends with his ex',
-    examples: str = '',
+    inspiration_prompt: str = "asking my boyfriend to stop being friends with his ex",
+    examples: str = "",
     temperature: float = 0.7,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
@@ -254,8 +257,8 @@ async def agenerate_env_profile(
         model_name=model_name,
         template=ENV_PROFILE_TEMPLATE,
         input_values={
-            'inspiration_prompt': inspiration_prompt,
-            'examples': examples,
+            "inspiration_prompt": inspiration_prompt,
+            "examples": examples,
         },
         output_parser=PydanticOutputParser(pydantic_object=BaseEnvironmentProfile),
         temperature=temperature,
@@ -264,6 +267,7 @@ async def agenerate_env_profile(
     )
 
 
+@api_calling_error_exponential_backoff
 @validate_call
 async def agenerate_relationship_profile(
     model_name: str,
@@ -274,12 +278,12 @@ async def agenerate_relationship_profile(
     """
     Using langchain to generate the background
     """
-    agent_profile = '\n'.join(agents_profiles)
+    agent_profile = "\n".join(agents_profiles)
     return await agenerate(
         model_name=model_name,
         template=RELATIONSHIP_PROFILE_TEMPLATE,
         input_values={
-            'agent_profile': agent_profile,
+            "agent_profile": agent_profile,
         },
         output_parser=PydanticOutputParser(pydantic_object=BaseRelationshipProfile),
         bad_output_process_model=bad_output_process_model,
@@ -287,6 +291,7 @@ async def agenerate_relationship_profile(
     )
 
 
+@api_calling_error_exponential_backoff
 @validate_call
 async def agenerate_action(
     model_name: str,
@@ -314,10 +319,10 @@ async def agenerate_action(
             model_name=model_name,
             template=template,
             input_values={
-                'agent': agent,
-                'turn_number': str(turn_number),
-                'history': history,
-                'action_list': ' '.join(action_types),
+                "agent": agent,
+                "turn_number": str(turn_number),
+                "history": history,
+                "action_list": " ".join(action_types),
             },
             output_parser=PydanticOutputParser(pydantic_object=AgentAction),
             temperature=temperature,
@@ -325,8 +330,8 @@ async def agenerate_action(
             use_fixed_model_version=use_fixed_model_version,
         )
     except Exception as e:
-        log.warning(f'Failed to generate action due to {e}')
-        return AgentAction(action_type='none', argument='')
+        log.warning(f"Failed to generate action due to {e}")
+        return AgentAction(action_type="none", argument="")
 
 
 @validate_call
@@ -335,8 +340,8 @@ async def agenerate_script(
     background: ScriptBackground,
     temperature: float = 0.7,
     agent_names: list[str] | None = None,
-    agent_name: str = '',
-    history: str = '',
+    agent_name: str = "",
+    history: str = "",
     single_step: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
@@ -353,9 +358,9 @@ async def agenerate_script(
                 model_name=model_name,
                 template=SCRIPT_SINGLE_STEP_TEMPLATE,
                 input_values={
-                    'background': background.to_natural_language(),
-                    'history': history,
-                    'agent': agent_name,
+                    "background": background.to_natural_language(),
+                    "history": history,
+                    "agent": agent_name,
                 },
                 output_parser=ScriptOutputParser(  # type: ignore[arg-type]
                     agent_names=agent_names or [],
@@ -372,7 +377,7 @@ async def agenerate_script(
                 model_name=model_name,
                 template=SCRIPT_FULL_TEMPLATE,
                 input_values={
-                    'background': background.to_natural_language(),
+                    "background": background.to_natural_language(),
                 },
                 output_parser=ScriptOutputParser(  # type: ignore[arg-type]
                     agent_names=agent_names or [],
@@ -385,11 +390,11 @@ async def agenerate_script(
             )
     except Exception as e:
         # TODO raise(e) # Maybe we do not want to return anything?
-        print(f'Exception in agenerate {e}')
+        print(f"Exception in agenerate {e}")
         return_default_value: ScriptInteractionReturnType = (
             ScriptInteraction.default_value_for_return_type()
         )
-        return (return_default_value, '')
+        return (return_default_value, "")
 
 
 @validate_call
@@ -399,13 +404,13 @@ def process_history(
     """
     Format the script background
     """
-    result = ''
+    result = ""
     if isinstance(script, ScriptBackground | EnvResponse):
         script = script.dict()
-        result = 'The initial observation\n\n'
+        result = "The initial observation\n\n"
     for key, value in script.items():
         if value:
-            result += f'{key}: {value} \n'
+            result += f"{key}: {value} \n"
     return result
 
 
@@ -423,16 +428,16 @@ async def agenerate_init_profile(
         model_name=model_name,
         template=INIT_PROFILE_TEMPLATE,
         input_values={
-            'name': basic_info['name'],
-            'age': basic_info['age'],
-            'gender_identity': basic_info['gender_identity'],
-            'pronoun': basic_info['pronoun'],
-            'occupation': basic_info['occupation'],
-            'bigfive': basic_info['Big_Five_Personality'],
-            'mft': basic_info['Moral_Foundation'],
-            'schwartz': basic_info['Schwartz_Portrait_Value'],
-            'decision_style': basic_info['Decision_making_Style'],
-            'secret': basic_info['secret'],
+            "name": basic_info["name"],
+            "age": basic_info["age"],
+            "gender_identity": basic_info["gender_identity"],
+            "pronoun": basic_info["pronoun"],
+            "occupation": basic_info["occupation"],
+            "bigfive": basic_info["Big_Five_Personality"],
+            "mft": basic_info["Moral_Foundation"],
+            "schwartz": basic_info["Schwartz_Portrait_Value"],
+            "decision_style": basic_info["Decision_making_Style"],
+            "secret": basic_info["secret"],
         },
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
@@ -448,26 +453,26 @@ async def convert_narratives(
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
 ) -> str:
-    if narrative == 'first':
+    if narrative == "first":
         return await agenerate(
             model_name=model_name,
             template=FIRST_PERSON_NARRATIVE_TEMPLATE,
-            input_values={'text': text},
+            input_values={"text": text},
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
         )
-    elif narrative == 'second':
+    elif narrative == "second":
         return await agenerate(
             model_name=model_name,
             template=SECOND_PERSON_NARRATIVE_TEMPLATE,
-            input_values={'text': text},
+            input_values={"text": text},
             output_parser=StrOutputParser(),
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
         )
     else:
-        raise ValueError(f'Narrative {narrative} is not supported.')
+        raise ValueError(f"Narrative {narrative} is not supported.")
 
 
 @validate_call
@@ -480,7 +485,7 @@ async def agenerate_goal(
     return await agenerate(
         model_name=model_name,
         template=GOAL_TEMPLATE,
-        input_values={'background': background},
+        input_values={"background": background},
         output_parser=StrOutputParser(),
         bad_output_process_model=bad_output_process_model,
         use_fixed_model_version=use_fixed_model_version,

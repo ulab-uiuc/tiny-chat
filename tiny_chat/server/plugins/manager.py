@@ -27,7 +27,7 @@ class PluginManager:
 
     def create_evaluator(
         self, config: EvaluatorConfig, model_providers: Dict[str, BaseModelProvider]
-    ) -> Optional[EvaluatorPlugin]:
+    ) -> EvaluatorPlugin | None:
         """Create an evaluator plugin from configuration"""
         plugin_class = self._plugin_registry.get(config.type)
 
