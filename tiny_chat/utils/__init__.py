@@ -3,6 +3,7 @@ from .error_handler import (
     parsing_error_exponential_backoff,
 )
 from .format_handler import format_docstring
+from .json_saver import save_conversation_to_json
 from .logs import BaseEpisodeLog, EpisodeLog
 from .template import TemplateManager
 
@@ -13,4 +14,5 @@ __all__ = [
     'BaseEpisodeLog',
     'TemplateManager',
     'EpisodeLog',
+    'save_conversation_to_json',
 ]
