@@ -6,7 +6,6 @@ from pathlib import Path
 from tiny_chat.messages import TinyChatBackground
 from tiny_chat.server.core import TinyChatServer
 
-# Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 

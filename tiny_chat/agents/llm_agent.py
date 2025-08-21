@@ -18,7 +18,6 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         model_name: str = 'gpt-4o-mini',
         script_like: bool = False,
     ) -> None:
-        # Convert dict to BaseAgentProfile if necessary
         if isinstance(agent_profile, dict):
             agent_profile = BaseAgentProfile(**agent_profile)
 

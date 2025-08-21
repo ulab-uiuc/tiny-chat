@@ -12,6 +12,8 @@ from ..evaluator import (
 )
 from ..messages import TinyChatBackground
 from ..utils import EpisodeLog
+from ..utils.json_saver import save_conversation_to_json
+from ..utils.logger import setup_logging
 from .config import ServerConfig, get_config
 from .plugins import PluginManager
 from .providers import BaseModelProvider, ModelProviderFactory
@@ -26,6 +28,7 @@ class TinyChatServer:
         self.config = config or get_config()
         self.model_providers: Dict[str, BaseModelProvider] = {}
         self.plugin_manager = PluginManager()
+
         self._setup_logging()
 
     async def initialize(self) -> None:
@@ -79,18 +82,7 @@ class TinyChatServer:
 
     def _setup_logging(self) -> None:
         """Setup logging configuration"""
-        log_config = self.config.logging
-
-        # Configure root logger
-        logging.basicConfig(
-            level=getattr(logging, log_config.level), format=log_config.format
-        )
-
-        # Setup file logging if specified
-        if log_config.file_path:
-            file_handler = logging.FileHandler(log_config.file_path)
-            file_handler.setFormatter(logging.Formatter(log_config.format))
-            logging.getLogger().addHandler(file_handler)
+        setup_logging()
 
     async def run_conversation(
         self,
@@ -181,9 +173,58 @@ class TinyChatServer:
 
         # Return log if requested
         if return_log:
-            return self._create_episode_log(agent_configs, evaluation_results)
+            episode_log = self._create_episode_log(agent_configs, evaluation_results)
+        else:
+            episode_log = None
 
-        return None
+        # Auto-save conversation to JSON
+        try:
+            # Extract conversation history from environment inbox
+            conversation_history = []
+            if hasattr(env, 'inbox') and env.inbox:
+                for source, message in env.inbox:
+                    if source != 'Environment':  # Skip environment messages
+                        conversation_history.append(
+                            {
+                                'agent': source,
+                                'content': message.to_natural_language(),
+                                'turn': len(conversation_history) + 1,
+                            }
+                        )
+
+            # Prepare agent profiles from configs
+            agent_profile = {}
+            for config in agent_configs:
+                agent_name = config['name']
+                agent_profile[agent_name] = {
+                    'name': agent_name,
+                    'type': config.get('type', 'llm'),
+                    'goal': config.get('goal', ''),
+                    'background': config.get('background', ''),
+                }
+
+            # Prepare environment profile
+            environment_profile = {
+                'scenario': scenario if scenario else '',
+                'background': background.to_natural_language() if background else '',
+                'max_turns': max_turns,
+                'action_order': action_order,
+                'total_turns': env.get_turn_number(),
+                'agents': [config['name'] for config in agent_configs],
+            }
+
+            # Save to JSON using the original json_saver function
+            save_conversation_to_json(
+                agent_profile=agent_profile,
+                environment_profile=environment_profile,
+                conversation_history=conversation_history,
+                evaluation=evaluation_results,
+                output_dir='conversation_logs',
+            )
+        except Exception as e:
+            logger.warning(f'Failed to save conversation to JSON: {e}')
+
+        return episode_log
 
     async def _create_agents(
         self,
