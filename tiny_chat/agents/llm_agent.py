@@ -76,25 +76,21 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
 
     @property
     def uses_provider(self) -> bool:
-        """是否使用 ModelProvider"""
         return self._model_provider is not None
 
     @property
     def effective_model_name(self) -> str:
-        """有效的模型名称"""
         if self._model_provider:
             return self._model_provider._get_agenerate_model_name()
         return self.model_name
 
     @property
     def provider_type(self) -> str:
-        """Provider 类型描述"""
         if self._model_provider:
             return f'{self._model_provider.__class__.__name__}({self._model_provider.type})'
         return 'direct_agenerate'
 
     def set_model_provider(self, provider: 'BaseModelProvider') -> None:
-        """设置 ModelProvider"""
         self._model_provider = provider
 
     def _first_message_text(self) -> str | None:
