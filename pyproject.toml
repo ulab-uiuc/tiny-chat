@@ -26,7 +26,7 @@ rich = "^14.1.0"
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.6.0"
 nbmake = "^1.5.5"
-types-setuptools = "^69.0.0.0"
+types-setuptools = "^80.9.0.20250809"
 ruff = "^0.3.0"
 commitizen = "^3.14.1"
 # Removed black and isort since we're using ruff
