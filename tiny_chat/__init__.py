@@ -22,7 +22,6 @@ from .messages import (
     TinyChatBackground,
 )
 from .profiles import BaseAgentProfile, BaseEnvironmentProfile, BaseRelationshipProfile
-from .utils.server import TinyChatServer
 
 __all__ = [
     'LLMAgent',

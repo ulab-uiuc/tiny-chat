@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from tiny_chat.messages import TinyChatBackground
-from tiny_chat.utils.server import TinyChatServer
+from tiny_chat.server.core import TinyChatServer
 
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
@@ -19,27 +19,21 @@ async def main() -> None:
     if not api_key:
         print('Warning: OPENAI_API_KEY not set. Some features may not work.')
 
-    # Create chat server
-    server = TinyChatServer(api_key=api_key)
-
     # Define 3-agent configurations
     agent_configs = [
         {
             'name': 'Alice',
             'type': 'llm',
-            'model': 'gpt-4o-mini',
             'goal': 'Talk about weekend hiking plans',
         },
         {
             'name': 'Bob',
             'type': 'llm',
-            'model': 'gpt-4o-mini',
             'goal': 'Share thoughts on a new sci-fi book',
         },
         {
             'name': 'Carol',
             'type': 'llm',
-            'model': 'gpt-4o-mini',
             'goal': 'Discuss travel experiences and make everyone laugh',
         },
     ]
@@ -69,14 +63,18 @@ async def main() -> None:
     print('Starting multi-agent conversation...')
     print('=' * 50)
 
-    episode_log = await server.run_conversation(
-        agent_configs=agent_configs,
-        background=background,
-        action_order='simultaneous',
-        max_turns=2,
-        enable_evaluation=True,
-        return_log=True,
-    )
+    # Run the conversation using the new server architecture
+    from tiny_chat.server.core import create_server
+
+    async with create_server() as server:
+        episode_log = await server.run_conversation(
+            agent_configs=agent_configs,
+            background=background,
+            action_order='simultaneous',
+            max_turns=2,
+            enable_evaluation=True,
+            return_log=True,
+        )
 
     if episode_log:
         print('\n=== Episode Log Created ===')
