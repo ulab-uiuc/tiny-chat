@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any
+
 from tiny_chat.generator import agenerate, agenerate_action, agenerate_goal
+
 from ..config import ModelProviderConfig
 
 
@@ -86,7 +88,7 @@ class BaseModelProvider(ABC):
         return self.config.max_tokens
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}({self.name})"
+        return f'{self.__class__.__name__}({self.name})'
 
     def __repr__(self) -> str:
         return self.__str__()

@@ -27,13 +27,13 @@ class TinyChatServer:
 
     async def initialize(self) -> None:
         """Initialize the server"""
-        logger.info("Initializing TinyChat Server...")
+        logger.info('Initializing TinyChat Server...')
 
         await self._load_model_providers()
         await self._load_plugins()
 
         logger.info(
-            f"Server initialized with {len(self.model_providers)} model providers"
+            f'Server initialized with {len(self.model_providers)} model providers'
         )
 
     async def _load_model_providers(self) -> None:
@@ -44,7 +44,7 @@ class TinyChatServer:
 
                 self.model_providers[name] = provider
             except Exception as e:
-                logger.error(f"Failed to load provider {name}: {e}")
+                logger.error(f'Failed to load provider {name}: {e}')
 
     async def _load_plugins(self) -> None:
         """Load evaluator plugins"""
@@ -57,9 +57,9 @@ class TinyChatServer:
                     evaluator_config, self.model_providers
                 )
                 if plugin:
-                    logger.info(f"Loaded evaluator plugin: {evaluator_config.type}")
+                    logger.info(f'Loaded evaluator plugin: {evaluator_config.type}')
             except Exception as e:
-                logger.error(f"Failed to load evaluator {evaluator_config.type}: {e}")
+                logger.error(f'Failed to load evaluator {evaluator_config.type}: {e}')
 
     def _setup_logging(self) -> None:
         """Setup logging configuration"""
@@ -76,14 +76,13 @@ class TinyChatServer:
         default_model: str | None = None,
         return_log: bool = False,
     ) -> EpisodeLog | None:
-
         max_turns = max_turns or self.config.max_turns
         action_order = action_order or self.config.action_order
         default_model_name = default_model or self.config.default_model
 
         self._validate_models(agent_configs, default_model_name)
 
-        logger.info(f"Starting conversation with {len(agent_configs)} agents")
+        logger.info(f'Starting conversation with {len(agent_configs)} agents')
 
         evaluators, terminal_evaluators = self._create_evaluators(
             max_turns, enable_evaluation
@@ -104,14 +103,14 @@ class TinyChatServer:
         env.reset(
             agents=agents,
             options={
-                "scenario": scenario
+                'scenario': scenario
                 or (background.to_natural_language() if background else None)
             },
         )
 
-        logger.info(f"Starting {len(agents)}-agent conversation")
+        logger.info(f'Starting {len(agents)}-agent conversation')
         await self._run_conversation_loop(env, agents)
-        logger.info(f"Conversation ended after {env.get_turn_number()} turns")
+        logger.info(f'Conversation ended after {env.get_turn_number()} turns')
 
         evaluation_results = {}
         if enable_evaluation and terminal_evaluators:
@@ -138,7 +137,7 @@ class TinyChatServer:
 
         # 验证每个 Agent 的模型
         for config in agent_configs:
-            agent_model = config.get("model_name", default_model_name)
+            agent_model = config.get('model_name', default_model_name)
             if agent_model not in self.model_providers:
                 raise ValueError(
                     f"Model '{agent_model}' for agent '{config['name']}' not available"
@@ -152,7 +151,7 @@ class TinyChatServer:
 
         if enable_evaluation:
             for plugin in self.plugin_manager.get_evaluators():
-                if hasattr(plugin, "get_terminal_evaluator"):
+                if hasattr(plugin, 'get_terminal_evaluator'):
                     terminal_eval = plugin.get_terminal_evaluator()
                     if terminal_eval:
                         terminal_evaluators.append(terminal_eval)
@@ -181,27 +180,27 @@ class TinyChatServer:
         agents = {}
 
         for config in agent_configs:
-            name = config["name"]
-            agent_type = config.get("type", "llm")
-            agent_model_name = config.get("model_name", default_model_name)
+            name = config['name']
+            agent_type = config.get('type', 'llm')
+            agent_model_name = config.get('model_name', default_model_name)
 
-            if agent_type != "llm":
-                raise ValueError(f"Unsupported agent type: {agent_type}")
+            if agent_type != 'llm':
+                raise ValueError(f'Unsupported agent type: {agent_type}')
 
             provider = self.model_providers[agent_model_name]
             logger.info(
-                f"Creating {name} with {agent_model_name} ({type(provider).__name__})"
+                f'Creating {name} with {agent_model_name} ({type(provider).__name__})'
             )
 
             agent = LLMAgent(
                 agent_name=name,
                 model_name=agent_model_name,
                 model_provider=provider,
-                script_like=config.get("script_like", False),
+                script_like=config.get('script_like', False),
             )
 
-            if "goal" in config:
-                agent.goal = config["goal"]
+            if 'goal' in config:
+                agent.goal = config['goal']
             elif background:
                 agent.goal = await provider.agenerate_goal(
                     background=background.to_natural_language()
@@ -217,20 +216,20 @@ class TinyChatServer:
         """Run the conversation loop"""
         while not env.is_terminated():
             turn_num = env.get_turn_number()
-            logger.info(f"--- Turn {turn_num} ---")
+            logger.info(f'--- Turn {turn_num} ---')
 
             actions = {}
             for name, agent in agents.items():
                 observation = env.get_observation(name)
                 action = await agent.act(observation)
                 actions[name] = action
-                logger.info(f"{name}: {action.to_natural_language()}")
+                logger.info(f'{name}: {action.to_natural_language()}')
 
             await env.astep(actions)
 
     def _log_evaluation_results(self, results: dict[str, Any]) -> None:
         """Log evaluation results"""
-        if "message" in results:
+        if 'message' in results:
             logger.info(f'Evaluation: {results["message"]}')
             return
 
@@ -241,15 +240,15 @@ class TinyChatServer:
         agent_details = {}
 
         for key, value in results.items():
-            if key.endswith("_score"):
+            if key.endswith('_score'):
                 agent_name = key[:-6]
                 agent_scores[agent_name] = value
-            elif key.endswith("_details"):
+            elif key.endswith('_details'):
                 agent_name = key[:-8]
                 agent_details[agent_name] = value
 
         for agent_name, score in agent_scores.items():
-            logger.info(f"{agent_name} Overall Score: {score:.2f}")
+            logger.info(f'{agent_name} Overall Score: {score:.2f}')
 
     def _save_conversation_log(
         self,
@@ -263,34 +262,34 @@ class TinyChatServer:
     ) -> None:
         try:
             conversation_history = []
-            if hasattr(env, "inbox") and env.inbox:
+            if hasattr(env, 'inbox') and env.inbox:
                 for source, message in env.inbox:
-                    if source != "Environment":
+                    if source != 'Environment':
                         conversation_history.append(
                             {
-                                "agent": source,
-                                "content": message.to_natural_language(),
-                                "turn": len(conversation_history) + 1,
+                                'agent': source,
+                                'content': message.to_natural_language(),
+                                'turn': len(conversation_history) + 1,
                             }
                         )
 
             agent_profile = {
-                config["name"]: {
-                    "name": config["name"],
-                    "type": config.get("type", "llm"),
-                    "model": config.get("model_name", "default"),
-                    "goal": config.get("goal", ""),
+                config['name']: {
+                    'name': config['name'],
+                    'type': config.get('type', 'llm'),
+                    'model': config.get('model_name', 'default'),
+                    'goal': config.get('goal', ''),
                 }
                 for config in agent_configs
             }
 
             environment_profile = {
-                "scenario": scenario
-                or (background.to_natural_language() if background else ""),
-                "max_turns": max_turns,
-                "action_order": action_order,
-                "total_turns": env.get_turn_number(),
-                "agents": [config["name"] for config in agent_configs],
+                'scenario': scenario
+                or (background.to_natural_language() if background else ''),
+                'max_turns': max_turns,
+                'action_order': action_order,
+                'total_turns': env.get_turn_number(),
+                'agents': [config['name'] for config in agent_configs],
             }
 
             save_conversation_to_json(
@@ -298,12 +297,12 @@ class TinyChatServer:
                 environment_profile=environment_profile,
                 conversation_history=conversation_history,
                 evaluation=evaluation_results,
-                output_dir="conversation_logs",
+                output_dir='conversation_logs',
             )
-            logger.info("Conversation saved to conversation_logs/")
+            logger.info('Conversation saved to conversation_logs/')
 
         except Exception as e:
-            logger.warning(f"Failed to save conversation: {e}")
+            logger.warning(f'Failed to save conversation: {e}')
 
     def _create_episode_log(
         self, agent_configs: list[dict[str, Any]], evaluation_results: dict[str, Any]
@@ -311,19 +310,19 @@ class TinyChatServer:
         """Create episode log from results"""
         rewards = []
         for config in agent_configs:
-            agent_name = config["name"]
-            score = evaluation_results.get(f"{agent_name}_score", 0.0)
-            details = evaluation_results.get(f"{agent_name}_details", {})
+            agent_name = config['name']
+            score = evaluation_results.get(f'{agent_name}_score', 0.0)
+            details = evaluation_results.get(f'{agent_name}_details', {})
             rewards.append((score, details))
 
         return EpisodeLog(
-            environment="TinyChat",
-            agents=[c["name"] for c in agent_configs],
+            environment='TinyChat',
+            agents=[c['name'] for c in agent_configs],
             messages=[],
             rewards=rewards,
-            reasoning=evaluation_results.get("comments", ""),
+            reasoning=evaluation_results.get('comments', ''),
             models=[
-                c.get("model_name", self.config.default_model) for c in agent_configs
+                c.get('model_name', self.config.default_model) for c in agent_configs
             ],
         )
 
@@ -334,25 +333,25 @@ class TinyChatServer:
 
             provider = self.model_providers[model_name]
             return {
-                "name": provider.name,
-                "type": provider.type,
-                "config": provider.config.dict(),
-                "healthy": await provider.check_health(),
+                'name': provider.name,
+                'type': provider.type,
+                'config': provider.config.dict(),
+                'healthy': await provider.check_health(),
             }
         else:
             return {
                 name: {
-                    "name": provider.name,
-                    "type": provider.type,
-                    "healthy": await provider.check_health(),
+                    'name': provider.name,
+                    'type': provider.type,
+                    'healthy': await provider.check_health(),
                 }
                 for name, provider in self.model_providers.items()
             }
 
     async def shutdown(self) -> None:
-        logger.info("Shutting down TinyChat Server...")
+        logger.info('Shutting down TinyChat Server...')
         self.model_providers.clear()
-        logger.info("Server shutdown complete")
+        logger.info('Server shutdown complete')
 
 
 @asynccontextmanager

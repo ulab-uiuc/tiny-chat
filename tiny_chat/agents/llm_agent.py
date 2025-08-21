@@ -18,11 +18,10 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         uuid_str: str | None = None,
         agent_profile: BaseAgentProfile | dict[str, Any] | None = None,
         profile_jsonl_path: str | None = None,
-        model_name: str = "gpt-4o-mini",
+        model_name: str = 'gpt-4o-mini',
         script_like: bool = False,
-        model_provider: "BaseModelProvider | None" = None,
+        model_provider: 'BaseModelProvider | None' = None,
     ) -> None:
-
         if isinstance(agent_profile, dict):
             agent_profile = BaseAgentProfile(**agent_profile)
 
@@ -37,11 +36,11 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self._model_provider = model_provider
 
     async def act(self, obs: Observation) -> AgentAction:
-        self.recv_message("Environment", obs)
+        self.recv_message('Environment', obs)
         await self._ensure_goal()
 
         if self._only_none_action(obs.available_actions):
-            return AgentAction(action_type="none", argument="")
+            return AgentAction(action_type='none', argument='')
 
         if self._model_provider:
             return await self._model_provider.agenerate_action(
@@ -66,7 +65,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
     async def _ensure_goal(self) -> None:
         if self._goal is not None:
             return
-        background = self._first_message_text() or ""
+        background = self._first_message_text() or ''
 
         if self._model_provider:
             self._goal = await self._model_provider.agenerate_goal(
@@ -91,23 +90,23 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
     def provider_type(self) -> str:
         """Provider 类型描述"""
         if self._model_provider:
-            return f"{self._model_provider.__class__.__name__}({self._model_provider.type})"
-        return "direct_agenerate"
+            return f'{self._model_provider.__class__.__name__}({self._model_provider.type})'
+        return 'direct_agenerate'
 
-    def set_model_provider(self, provider: "BaseModelProvider") -> None:
+    def set_model_provider(self, provider: 'BaseModelProvider') -> None:
         """设置 ModelProvider"""
         self._model_provider = provider
 
     def _first_message_text(self) -> str | None:
-        if not getattr(self, "inbox", None):
+        if not getattr(self, 'inbox', None):
             return None
         return self.inbox[0][1].to_natural_language()
 
     @staticmethod
     def _history_text(inbox: Iterable[tuple[str, Any]]) -> str:
-        return "\n".join(msg.to_natural_language() for _, msg in inbox)
+        return '\n'.join(msg.to_natural_language() for _, msg in inbox)
 
     @staticmethod
     def _only_none_action(actions: Iterable[str]) -> bool:
         acts = list(actions)
-        return len(acts) == 1 and acts[0].casefold() == "none"
+        return len(acts) == 1 and acts[0].casefold() == 'none'

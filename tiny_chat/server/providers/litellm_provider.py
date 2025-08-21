@@ -3,15 +3,15 @@ from .base import BaseModelProvider
 
 class LiteLLMProvider(BaseModelProvider):
     def _get_agenerate_model_name(self) -> str:
-        if self.config.type == "custom" and self.config.api_base:
+        if self.config.type == 'custom' and self.config.api_base:
             # Custom endpoint format: custom://model@url
-            return f"custom://{self.config.name}@{self.config.api_base}"
-        elif self.config.type == "vllm" and self.config.api_base:
+            return f'custom://{self.config.name}@{self.config.api_base}'
+        elif self.config.type == 'vllm' and self.config.api_base:
             # vLLM endpoint format: vllm://model@url
-            return f"vllm://{self.config.name}@{self.config.api_base}"
-        elif self.config.type == "together":
+            return f'vllm://{self.config.name}@{self.config.api_base}'
+        elif self.config.type == 'together':
             # Together format: together://model
-            return f"together://{self.config.name}"
+            return f'together://{self.config.name}'
         else:
             return self.config.name
 
@@ -20,7 +20,7 @@ class LiteLLMProvider(BaseModelProvider):
             from tiny_chat.generator.output_parsers import StrOutputParser
 
             await self.agenerate(
-                template="Hello",
+                template='Hello',
                 input_values={},
                 output_parser=StrOutputParser(),
                 temperature=0.1,
