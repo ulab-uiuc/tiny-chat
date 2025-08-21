@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from tiny_chat.messages import TinyChatBackground
+from tiny_chat.server.core import TinyChatServer
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -61,6 +62,18 @@ async def main() -> None:
     print('Starting multi-agent conversation...')
     print('=' * 50)
 
+    # Run the conversation using the new server architecture
+    from tiny_chat.server.core import create_server
+
+    async with create_server() as server:
+        episode_log = await server.run_conversation(
+            agent_configs=agent_configs,
+            background=background,
+            action_order='simultaneous',
+            max_turns=2,
+            enable_evaluation=True,
+            return_log=True,
+        )
     from tiny_chat.server.core import create_server
 
     async with create_server() as server:
