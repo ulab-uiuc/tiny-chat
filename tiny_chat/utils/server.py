@@ -11,6 +11,7 @@ from tiny_chat.evaluator import (
 from tiny_chat.generator import agenerate_goal
 from tiny_chat.messages import TinyChatBackground
 from tiny_chat.utils import EpisodeLog
+from tiny_chat.utils import save_conversation_to_json
 
 
 class TinyChatServer:
@@ -76,6 +77,15 @@ class TinyChatServer:
 
         print('\n=== Full Conversation Summary ===')
         print(env.get_conversation_summary())
+
+        # save conversation to JSON
+        save_conversation_to_json(
+            agent_profile = agent_configs,
+            environment_profile = background.to_natural_language(),
+            conversation_history = env.get_conversation_summary(),
+            evaluation = evaluation_results if enable_evaluation else {},
+        )
+
         if return_log:
             rewards = []
             for config in agent_configs:

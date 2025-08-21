@@ -5,6 +5,7 @@ from .error_handler import (
 from .format_handler import format_docstring
 from .logs import BaseEpisodeLog, EpisodeLog
 from .template import TemplateManager
+from .json_saver import save_conversation_to_json
 
 __all__ = [
     'format_docstring',
@@ -13,4 +14,5 @@ __all__ = [
     'BaseEpisodeLog',
     'TemplateManager',
     'EpisodeLog',
+    'save_conversation_to_json',
 ]
