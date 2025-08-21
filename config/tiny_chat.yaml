@@ -1,0 +1,103 @@
+# TinyChat Server Configuration
+
+# Model providers configuration - now using unified LiteLLM provider
+models:
+  # OpenAI models
+  gpt-4o-mini:
+    name: gpt-4o-mini
+    type: openai
+    temperature: 0.7
+    timeout: 30
+  
+  gpt-4:
+    name: gpt-4
+    type: openai
+    temperature: 0.7
+    timeout: 60
+  
+  # Anthropic models (uncomment to use)
+  # claude-3-sonnet:
+  #   name: claude-3-sonnet-20240229
+  #   type: anthropic
+  #   temperature: 0.7
+  #   timeout: 45
+  
+  # Together AI models (uncomment to use)
+  # llama-2-70b-together:
+  #   name: meta-llama/Llama-2-70b-chat-hf
+  #   type: together
+  #   temperature: 0.7
+  #   timeout: 45
+  
+  # vLLM models (uncomment to use)
+  # llama-2-7b-vllm:
+  #   name: llama-2-7b-chat
+  #   type: vllm
+  #   api_base: http://localhost:8000
+  #   temperature: 0.8
+  #   timeout: 30
+  
+  # Ollama models (uncomment to use)
+  # llama2-ollama:
+  #   name: llama2
+  #   type: ollama
+  #   api_base: http://localhost:11434
+  #   temperature: 0.8
+  #   timeout: 30
+  
+  # Azure OpenAI (uncomment to use)
+  # gpt-4-azure:
+  #   name: gpt-4
+  #   type: azure
+  #   api_base: https://your-resource.openai.azure.com
+  #   temperature: 0.7
+  #   timeout: 30
+
+# Default model to use
+default_model: gpt-4o-mini
+
+# Evaluator configuration
+evaluators:
+  - type: rule_based
+    enabled: true
+    config:
+      max_turn_number: 20
+      max_stale_turn: 2
+  
+  - type: llm
+    enabled: true
+    model: gpt-4o-mini
+    config:
+      dimensions: sotopia
+
+# Environment settings
+max_turns: 20
+action_order: simultaneous
+available_action_types:
+  - none
+  - speak
+  - non-verbal communication
+  - action
+  - leave
+
+# Logging configuration
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_path: logs/tiny_chat.log
+  max_file_size: 10MB
+  backup_count: 5
+
+# API server configuration
+api:
+  host: 0.0.0.0
+  port: 8000
+  workers: 1
+  reload: false
+  cors_origins:
+    - "*"
+  rate_limit: "100/minute"
+
+# Monitoring configuration
+enable_metrics: true
+metrics_port: 9090

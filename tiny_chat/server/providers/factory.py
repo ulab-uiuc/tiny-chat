@@ -1,0 +1,61 @@
+from typing import TYPE_CHECKING
+
+from ..config import ModelProviderConfig
+from .base import BaseModelProvider
+from .custom_provider import CustomProvider
+from .litellm_provider import LiteLLMProvider
+
+if TYPE_CHECKING:
+    from typing import type
+
+
+class ModelProviderFactory:
+    """Factory for creating model provider instances"""
+
+    _providers: dict[str, type[BaseModelProvider]] = {
+        # LiteLLM provider supports many types
+        'openai': LiteLLMProvider,
+        'anthropic': LiteLLMProvider,
+        'together': LiteLLMProvider,
+        'vllm': LiteLLMProvider,
+        'ollama': LiteLLMProvider,
+        'bedrock': LiteLLMProvider,
+        'azure': LiteLLMProvider,
+        'palm': LiteLLMProvider,
+        'cohere': LiteLLMProvider,
+        'replicate': LiteLLMProvider,
+        'litellm': LiteLLMProvider,
+        # Keep custom provider for special cases
+        'custom': CustomProvider,
+    }
+
+    @classmethod
+    def create_provider(cls, config: ModelProviderConfig) -> BaseModelProvider:
+        """Create a model provider instance from configuration"""
+        provider_class = cls._providers.get(config.type)
+
+        if provider_class is None:
+            available_types = ', '.join(cls._providers.keys())
+            raise ValueError(
+                f'Unknown provider type: {config.type}. '
+                f'Available types: {available_types}'
+            )
+
+        return provider_class(config)
+
+    @classmethod
+    def register_provider(
+        cls, provider_type: str, provider_class: type[BaseModelProvider]
+    ) -> None:
+        """Register a new provider type"""
+        cls._providers[provider_type] = provider_class
+
+    @classmethod
+    def get_available_types(cls) -> list[str]:
+        """Get list of available provider types"""
+        return list(cls._providers.keys())
+
+    @classmethod
+    def is_supported(cls, provider_type: str) -> bool:
+        """Check if a provider type is supported"""
+        return provider_type in cls._providers

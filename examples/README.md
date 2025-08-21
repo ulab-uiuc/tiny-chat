@@ -2,29 +2,7 @@
 
 This directory showcases various usage examples for Tiny-Chat.
 
-## Example Files
-
-```
-examples/
-├── README.md
-├── two_agents_chat.py      # Two-agent conversation
-├── human_agent_chat.py     # Human-AI interactive chat
-└── multi_agents_chat.py    # Multi-agent conversation
-```
-
 ## Running Examples
-
-### Two-Agent Conversation
-
-```bash
-python examples/two_agents_chat.py
-```
-
-### Human-AI Interactive Chat
-
-```bash
-python examples/human_agent_chat.py
-```
 
 ### Multi-Agent Conversation
 

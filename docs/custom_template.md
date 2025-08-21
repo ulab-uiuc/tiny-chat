@@ -221,7 +221,7 @@ async def generate_custom_action():
 ### Using Custom Templates in Server
 
 ```python
-from tiny_chat.utils.server import TinyChatServer
+from tiny_chat.server.core import create_server
 from tiny_chat.utils.template import TemplateManager
 
 class CustomTinyChatServer(TinyChatServer):
