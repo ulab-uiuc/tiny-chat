@@ -1,14 +1,11 @@
-import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from ..agents import LLMAgent
+from ..agents import HumanAgent, LLMAgent
 from ..envs import TinyChatEnvironment
 from ..evaluator import (
-    EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    TinyChatDimensions,
 )
 from ..messages import TinyChatBackground
 from ..utils import EpisodeLog
@@ -24,9 +21,9 @@ logger = logging.getLogger(__name__)
 class TinyChatServer:
     """Main TinyChat server with dependency injection"""
 
-    def __init__(self, config: Optional[ServerConfig] = None):
+    def __init__(self, config: ServerConfig | None = None):
         self.config = config or get_config()
-        self.model_providers: Dict[str, BaseModelProvider] = {}
+        self.model_providers: dict[str, BaseModelProvider] = {}
         self.plugin_manager = PluginManager()
 
         self._setup_logging()
@@ -86,15 +83,15 @@ class TinyChatServer:
 
     async def run_conversation(
         self,
-        agent_configs: List[Dict[str, Any]],
-        background: Optional[TinyChatBackground] = None,
-        max_turns: Optional[int] = None,
+        agent_configs: list[dict[str, Any]],
+        background: TinyChatBackground | None = None,
+        max_turns: int | None = None,
         enable_evaluation: bool = True,
-        action_order: Optional[str] = None,
-        scenario: Optional[str] = None,
-        model_name: Optional[str] = None,
+        action_order: str | None = None,
+        scenario: str | None = None,
+        model_name: str | None = None,
         return_log: bool = False,
-    ) -> Optional[EpisodeLog]:
+    ) -> EpisodeLog | None:
         """Run a multi-agent conversation"""
 
         # Use configuration defaults
@@ -228,10 +225,10 @@ class TinyChatServer:
 
     async def _create_agents(
         self,
-        agent_configs: List[Dict[str, Any]],
-        background: Optional[TinyChatBackground],
+        agent_configs: list[dict[str, Any]],
+        background: TinyChatBackground | None,
         model_name: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create agents with dependency injection"""
         agents = {}
         provider = self.model_providers[model_name]
@@ -248,6 +245,11 @@ class TinyChatServer:
 
                 # Inject model provider (future enhancement)
                 # agent.set_model_provider(provider)
+
+            elif agent_type == 'human':
+                agent = HumanAgent(
+                    agent_name=name,
+                )
 
             else:
                 raise ValueError(f'Unknown agent type: {agent_type}')
@@ -269,7 +271,7 @@ class TinyChatServer:
         return agents
 
     async def _run_conversation_loop(
-        self, env: TinyChatEnvironment, agents: Dict[str, Any]
+        self, env: TinyChatEnvironment, agents: dict[str, Any]
     ) -> None:
         """Run the conversation loop"""
         while not env.is_terminated():
@@ -286,7 +288,7 @@ class TinyChatServer:
 
             await env.astep(actions)
 
-    def _log_evaluation_results(self, results: Dict[str, Any]) -> None:
+    def _log_evaluation_results(self, results: dict[str, Any]) -> None:
         """Log evaluation results"""
         if 'message' in results:
             logger.info(f'Evaluation: {results["message"]}')
@@ -319,7 +321,7 @@ class TinyChatServer:
             logger.info(f'Evaluation Comments: {results["comments"]}')
 
     def _create_episode_log(
-        self, agent_configs: List[Dict[str, Any]], evaluation_results: Dict[str, Any]
+        self, agent_configs: list[dict[str, Any]], evaluation_results: dict[str, Any]
     ) -> EpisodeLog:
         """Create episode log from results"""
         rewards = []
@@ -347,7 +349,7 @@ class TinyChatServer:
             models=[c.get('model', self.config.default_model) for c in agent_configs],
         )
 
-    async def get_model_info(self, model_name: Optional[str] = None) -> Dict[str, Any]:
+    async def get_model_info(self, model_name: str | None = None) -> dict[str, Any]:
         """Get information about available models"""
         if model_name:
             if model_name not in self.model_providers:
@@ -386,7 +388,7 @@ class TinyChatServer:
 
 # Server lifecycle management
 @asynccontextmanager
-async def create_server(config: Optional[ServerConfig] = None):
+async def create_server(config: ServerConfig | None = None):
     """Create and manage server lifecycle"""
     server = TinyChatServer(config)
     try:
