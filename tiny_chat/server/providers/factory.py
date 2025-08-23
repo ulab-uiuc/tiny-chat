@@ -2,8 +2,8 @@ from typing import TYPE_CHECKING
 
 from ..config import ModelProviderConfig
 from .base import BaseModelProvider
-from .custom_provider import CustomProvider
 from .litellm_provider import LiteLLMProvider
+from .workflow_provider import WorkflowProvider
 
 if TYPE_CHECKING:
     from typing import type
@@ -25,8 +25,10 @@ class ModelProviderFactory:
         'cohere': LiteLLMProvider,
         'replicate': LiteLLMProvider,
         'litellm': LiteLLMProvider,
-        # Keep custom provider for special cases
-        'custom': CustomProvider,
+        # Custom endpoints now supported by LiteLLM provider
+        'custom': LiteLLMProvider,
+        # Workflow provider for extensible use cases
+        'workflow': WorkflowProvider,
     }
 
     @classmethod

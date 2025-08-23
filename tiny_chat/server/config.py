@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, validator
@@ -23,12 +23,16 @@ class ModelProviderConfig(BaseModel):
         'replicate',
         'litellm',
         'custom',
+        'workflow',
     ] = Field(description='Provider type')
-    api_base: Optional[str] = Field(default=None, description='API base URL')
-    api_key: Optional[str] = Field(default=None, description='API key')
+    api_base: str | None = Field(default=None, description='API base URL')
+    api_key: str | None = Field(default=None, description='API key')
     temperature: float = Field(default=0.7, description='Generation temperature')
-    max_tokens: Optional[int] = Field(default=None, description='Maximum tokens')
+    max_tokens: int | None = Field(default=None, description='Maximum tokens')
     timeout: int = Field(default=30, description='Request timeout in seconds')
+    custom_config: dict[str, Any] | None = Field(
+        default=None, description='Custom configuration for flexible providers'
+    )
 
     @validator('api_key')
     def resolve_api_key(cls, v, values):
@@ -44,10 +48,10 @@ class EvaluatorConfig(BaseModel):
     """Configuration for an evaluator"""
 
     type: Literal['rule_based', 'llm', 'custom'] = Field(description='Evaluator type')
-    model: Optional[str] = Field(
+    model: str | None = Field(
         default=None, description='Model to use for LLM evaluators'
     )
-    config: Dict[str, Any] = Field(
+    config: dict[str, Any] = Field(
         default_factory=dict, description='Evaluator-specific config'
     )
     enabled: bool = Field(default=True, description='Whether evaluator is enabled')
@@ -58,7 +62,7 @@ class LoggingConfig(BaseModel):
 
     level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR'] = Field(default='INFO')
     format: str = Field(default='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_path: Optional[str] = Field(default=None, description='Log file path')
+    file_path: str | None = Field(default=None, description='Log file path')
     max_file_size: str = Field(default='10MB', description='Maximum log file size')
     backup_count: int = Field(default=5, description='Number of backup log files')
 
@@ -70,7 +74,7 @@ class APIConfig(BaseModel):
     port: int = Field(default=8000, description='Port to bind to')
     workers: int = Field(default=1, description='Number of worker processes')
     reload: bool = Field(default=False, description='Enable auto-reload')
-    cors_origins: List[str] = Field(
+    cors_origins: list[str] = Field(
         default_factory=lambda: ['*'], description='CORS origins'
     )
     rate_limit: str = Field(default='100/minute', description='Rate limiting')
@@ -79,21 +83,32 @@ class APIConfig(BaseModel):
 class ServerConfig(BaseModel):
     """Main server configuration"""
 
-    # Core settings
-    models: Dict[str, ModelProviderConfig] = Field(description='Available models')
-    evaluators: List[EvaluatorConfig] = Field(
-        default_factory=list, description='Evaluators'
+    models: dict[str, ModelProviderConfig] = Field(description='Available models')
+    evaluators: list[EvaluatorConfig] = Field(
+        default_factory=lambda: [
+            EvaluatorConfig(
+                type='rule_based',
+                config={'max_turn_number': 20, 'max_stale_turn': 2},
+                enabled=True,
+            ),
+            EvaluatorConfig(
+                type='llm',
+                model='gpt-4o-mini',
+                config={'dimensions': 'sotopia'},
+                enabled=True,
+            ),
+        ],
+        description='Default evaluators (all enabled by default)',
     )
     default_model: str = Field(
         default='gpt-4o-mini', description='Default model to use'
     )
 
-    # Environment settings
     max_turns: int = Field(default=20, description='Maximum conversation turns')
     action_order: Literal['simultaneous', 'round-robin', 'sequential', 'random'] = (
         Field(default='simultaneous', description='Agent action order')
     )
-    available_action_types: List[str] = Field(
+    available_action_types: list[str] = Field(
         default_factory=lambda: [
             'none',
             'speak',
@@ -104,7 +119,6 @@ class ServerConfig(BaseModel):
         description='Available action types',
     )
 
-    # System settings
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     api: APIConfig = Field(default_factory=APIConfig)
     enable_metrics: bool = Field(default=True, description='Enable metrics collection')
@@ -122,9 +136,9 @@ class ServerConfig(BaseModel):
 class ConfigManager:
     """Manages server configuration loading and validation"""
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         self.config_path = config_path or self._find_config_file()
-        self._config: Optional[ServerConfig] = None
+        self._config: ServerConfig | None = None
 
     def _find_config_file(self) -> Path:
         """Find configuration file in standard locations"""
@@ -139,7 +153,6 @@ class ConfigManager:
             if path.exists():
                 return path
 
-        # Return default path if no config found
         return Path('config/tiny_chat.yaml')
 
     def load_config(self) -> ServerConfig:
@@ -148,11 +161,10 @@ class ConfigManager:
             return self._config
 
         if not self.config_path.exists():
-            # Create default configuration
             self._config = self._create_default_config()
             self.save_config(self._config)
         else:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, encoding='utf-8') as f:
                 config_data = yaml.safe_load(f)
             self._config = ServerConfig(**config_data)
 
@@ -163,7 +175,6 @@ class ConfigManager:
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(self.config_path, 'w', encoding='utf-8') as f:
-            # Convert to dict and write as YAML
             config_dict = config.dict()
             yaml.safe_dump(config_dict, f, default_flow_style=False, indent=2)
 
@@ -203,7 +214,6 @@ class ConfigManager:
         return self.load_config()
 
 
-# Global config manager instance
 config_manager = ConfigManager()
 
 

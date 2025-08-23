@@ -1,5 +1,4 @@
 import logging
-from typing import Any, Dict, List, Optional
 
 from ..config import EvaluatorConfig
 from ..providers import BaseModelProvider
@@ -14,7 +13,7 @@ class PluginManager:
     """Manages plugins for the TinyChat server"""
 
     def __init__(self):
-        self._evaluators: List[EvaluatorPlugin] = []
+        self._evaluators: list[EvaluatorPlugin] = []
         self._plugin_registry = {
             'llm': LLMEvaluatorPlugin,
             'rule_based': RuleBasedPlugin,
@@ -26,8 +25,8 @@ class PluginManager:
         logger.info(f'Registered plugin type: {plugin_type}')
 
     def create_evaluator(
-        self, config: EvaluatorConfig, model_providers: Dict[str, BaseModelProvider]
-    ) -> Optional[EvaluatorPlugin]:
+        self, config: EvaluatorConfig, model_providers: dict[str, BaseModelProvider]
+    ) -> EvaluatorPlugin | None:
         """Create an evaluator plugin from configuration"""
         plugin_class = self._plugin_registry.get(config.type)
 
@@ -42,7 +41,6 @@ class PluginManager:
             # Add model provider if needed
             if config.model and config.model in model_providers:
                 plugin_config['model_provider'] = model_providers[config.model]
-                plugin_config['model_name'] = config.model
 
             plugin = plugin_class(plugin_config)
             self._evaluators.append(plugin)
@@ -54,11 +52,11 @@ class PluginManager:
             logger.error(f'Failed to create evaluator plugin {config.type}: {e}')
             return None
 
-    def get_evaluators(self) -> List[EvaluatorPlugin]:
+    def get_evaluators(self) -> list[EvaluatorPlugin]:
         """Get all loaded evaluator plugins"""
         return self._evaluators.copy()
 
-    def get_evaluator_by_type(self, plugin_type: str) -> List[EvaluatorPlugin]:
+    def get_evaluator_by_type(self, plugin_type: str) -> list[EvaluatorPlugin]:
         """Get evaluators by plugin type"""
         return [
             plugin for plugin in self._evaluators if plugin.plugin_type == plugin_type
@@ -69,6 +67,6 @@ class PluginManager:
         self._evaluators.clear()
         logger.info('Cleared all evaluator plugins')
 
-    def get_available_types(self) -> List[str]:
+    def get_available_types(self) -> list[str]:
         """Get list of available plugin types"""
         return list(self._plugin_registry.keys())

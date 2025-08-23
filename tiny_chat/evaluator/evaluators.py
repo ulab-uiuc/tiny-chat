@@ -2,13 +2,16 @@ import abc
 import logging
 from collections import defaultdict
 from collections.abc import Callable
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from pydantic import BaseModel, Field, validate_call
 
 from tiny_chat.messages import AgentAction, Message, ScriptEnvironmentResponse
 
 from .dimensions import SotopiaDimensions
+
+if TYPE_CHECKING:
+    from tiny_chat.server.providers.base import BaseModelProvider
 
 log = logging.getLogger('evaluators')
 
@@ -89,13 +92,29 @@ class RuleBasedTerminatedEvaluator(Evaluator):
         return self(turn_number, messages)
 
 
+def _create_default_evaluator_model_provider() -> 'BaseModelProvider':
+    """Create a default model provider for evaluation using gpt-4o-mini"""
+    from tiny_chat.server.config import ModelProviderConfig
+    from tiny_chat.server.providers.factory import ModelProviderFactory
+
+    default_config = ModelProviderConfig(
+        name='gpt-4o-mini',
+        type='openai',
+        temperature=0.0,  # Use 0.0 for evaluations for consistency
+    )
+    return ModelProviderFactory.create_provider(default_config)
+
+
 class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     def __init__(
         self,
-        model_name: str,
+        model_provider: 'BaseModelProvider | None' = None,
         response_format_class: type[T_eval_dim] | None = None,
     ) -> None:
-        self.model_name = model_name
+        # Use provided model_provider or create default one
+        self._model_provider = (
+            model_provider or _create_default_evaluator_model_provider()
+        )
         self.prompt = ''
         self.response_format_class = response_format_class or SotopiaDimensions  # type: ignore
 
@@ -147,12 +166,23 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                     if sender != 'Environment' and sender not in agent_names:
                         agent_names.append(sender)
 
-            EvaluationClass = EvaluationForMultipleAgents
+            # Use the response_format_class to properly type the EvaluationForMultipleAgents
+            EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]
 
-            # Generate evaluation using agenerate
-            response = await agenerate(
-                model_name=self.model_name,
-                template="""{history}
+            # Generate evaluation using model_provider
+            # Try to use agenerate_evaluation method if available, otherwise fallback to direct agenerate
+            if hasattr(self._model_provider, 'agenerate_evaluation'):
+                response = await self._model_provider.agenerate_evaluation(
+                    history=history,
+                    evaluation_class=EvaluationClass,
+                    temperature=temperature,
+                )
+            else:
+                # Fallback: use agenerate with the provider's model name
+                effective_model_name = self._model_provider._get_agenerate_model_name()
+                response = await agenerate(
+                    model_name=effective_model_name,
+                    template="""{history}
 
 Based on previous interactions, evaluate how well participants achieve their goals.
 
@@ -166,10 +196,10 @@ Example format for each dimension:
 Please follow the format:
 {format_instructions}
 """,
-                input_values={'history': history},
-                output_parser=PydanticOutputParser(pydantic_object=EvaluationClass),
-                temperature=temperature,
-            )
+                    input_values={'history': history},
+                    output_parser=PydanticOutputParser(pydantic_object=EvaluationClass),
+                    temperature=temperature,
+                )
 
             response_list: list[
                 tuple[str, tuple[tuple[str, int | float | bool], str]]

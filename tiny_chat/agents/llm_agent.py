@@ -1,11 +1,24 @@
 from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from tiny_chat.generator import agenerate_action, agenerate_goal
 from tiny_chat.messages import AgentAction, Observation
 from tiny_chat.profiles import BaseAgentProfile
 
 from .base_agent import BaseAgent
+
+if TYPE_CHECKING:
+    from tiny_chat.server.providers.base import BaseModelProvider
+
+
+def _create_default_model_provider() -> 'BaseModelProvider':
+    """Create a default model provider using gpt-4o-mini"""
+    from tiny_chat.server.config import ModelProviderConfig
+    from tiny_chat.server.providers.factory import ModelProviderFactory
+
+    default_config = ModelProviderConfig(
+        name='gpt-4o-mini', type='openai', temperature=0.7
+    )
+    return ModelProviderFactory.create_provider(default_config)
 
 
 class LLMAgent(BaseAgent[Observation, AgentAction]):
@@ -15,7 +28,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         uuid_str: str | None = None,
         agent_profile: BaseAgentProfile | dict[str, Any] | None = None,
         profile_jsonl_path: str | None = None,
-        model_name: str = 'gpt-4o-mini',
+        model_provider: 'BaseModelProvider | None' = None,
         script_like: bool = False,
     ) -> None:
         if isinstance(agent_profile, dict):
@@ -27,19 +40,18 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             agent_profile=agent_profile,
             profile_jsonl_path=profile_jsonl_path,
         )
-        self.model_name = model_name
+
+        self._model_provider = model_provider or _create_default_model_provider()
         self.script_like = script_like
 
     async def act(self, obs: Observation) -> AgentAction:
         self.recv_message('Environment', obs)
-
         await self._ensure_goal()
 
         if self._only_none_action(obs.available_actions):
             return AgentAction(action_type='none', argument='')
 
-        action = await agenerate_action(
-            self.model_name,
+        return await self._model_provider.agenerate_action(
             history=self._history_text(self.inbox),
             turn_number=obs.turn_number,
             action_types=obs.available_actions,
@@ -47,13 +59,27 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             goal=self.goal,
             script_like=self.script_like,
         )
-        return action
 
     async def _ensure_goal(self) -> None:
         if self._goal is not None:
             return
         background = self._first_message_text() or ''
-        self._goal = await agenerate_goal(self.model_name, background=background)
+        self._goal = await self._model_provider.agenerate_goal(background=background)
+
+    @property
+    def uses_provider(self) -> bool:
+        return True  # Always uses provider now
+
+    @property
+    def effective_model_name(self) -> str:
+        return self._model_provider._get_agenerate_model_name()
+
+    @property
+    def provider_type(self) -> str:
+        return f'{self._model_provider.__class__.__name__}({self._model_provider.type})'
+
+    def set_model_provider(self, provider: 'BaseModelProvider') -> None:
+        self._model_provider = provider
 
     def _first_message_text(self) -> str | None:
         if not getattr(self, 'inbox', None):

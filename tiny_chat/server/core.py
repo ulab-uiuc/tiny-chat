@@ -2,7 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from ..agents import HumanAgent, LLMAgent
+from ..agents import LLMAgent
 from ..envs import TinyChatEnvironment
 from ..evaluator import RuleBasedTerminatedEvaluator
 from ..messages import TinyChatBackground
@@ -23,17 +23,13 @@ class TinyChatServer:
         self.config = config or get_config()
         self.model_providers: dict[str, BaseModelProvider] = {}
         self.plugin_manager = PluginManager()
-
         self._setup_logging()
 
     async def initialize(self) -> None:
         """Initialize the server"""
         logger.info('Initializing TinyChat Server...')
 
-        # Load model providers
         await self._load_model_providers()
-
-        # Load plugins
         await self._load_plugins()
 
         logger.info(
@@ -46,19 +42,9 @@ class TinyChatServer:
             try:
                 provider = ModelProviderFactory.create_provider(config)
 
-                # Check provider health
-                if await provider.check_health():
-                    self.model_providers[name] = provider
-                    logger.info(f'Loaded model provider: {name} ({config.type})')
-                else:
-                    # Still load the provider but with warning
-                    self.model_providers[name] = provider
-                    logger.warning(
-                        f'Model provider {name} failed health check, but loaded anyway'
-                    )
-
+                self.model_providers[name] = provider
             except Exception as e:
-                logger.error(f'Failed to load model provider {name}: {e}')
+                logger.error(f'Failed to load provider {name}: {e}')
 
     async def _load_plugins(self) -> None:
         """Load evaluator plugins"""
@@ -87,44 +73,21 @@ class TinyChatServer:
         enable_evaluation: bool = True,
         action_order: str | None = None,
         scenario: str | None = None,
-        model_name: str | None = None,
+        default_model: str | None = None,
         return_log: bool = False,
     ) -> EpisodeLog | None:
-        """Run a multi-agent conversation"""
-
-        # Use configuration defaults
         max_turns = max_turns or self.config.max_turns
         action_order = action_order or self.config.action_order
-        model_name = model_name or self.config.default_model
+        default_model_name = default_model or self.config.default_model
 
-        # Validate model exists
-        if model_name not in self.model_providers:
-            raise ValueError(
-                f"Model '{model_name}' not available. Available models: {list(self.model_providers.keys())}"
-            )
+        self._validate_models(agent_configs, default_model_name)
 
-        logger.info(
-            f'Starting conversation with {len(agent_configs)} agents using model {model_name}'
+        logger.info(f'Starting conversation with {len(agent_configs)} agents')
+
+        evaluators, terminal_evaluators = self._create_evaluators(
+            max_turns, enable_evaluation
         )
 
-        # Create evaluators
-        evaluators = []
-        terminal_evaluators = []
-
-        # Add rule-based evaluator
-        evaluators.append(RuleBasedTerminatedEvaluator(max_turn_number=max_turns))
-
-        # Add LLM evaluators if enabled
-        if enable_evaluation:
-            for plugin in self.plugin_manager.get_evaluators():
-                if hasattr(plugin, 'get_terminal_evaluator'):
-                    terminal_eval = plugin.get_terminal_evaluator()
-                    if terminal_eval is not None:
-                        terminal_evaluators.append(terminal_eval)
-                else:
-                    evaluators.append(plugin)
-
-        # Create environment
         env = TinyChatEnvironment(
             evaluators=evaluators,
             terminal_evaluators=terminal_evaluators,
@@ -133,135 +96,125 @@ class TinyChatServer:
             available_action_types=set(self.config.available_action_types),
         )
 
-        # Create agents with dependency injection
-        agents = await self._create_agents(agent_configs, background, model_name)
+        agents = await self._create_agents(
+            agent_configs, background, default_model_name
+        )
 
-        # Setup environment
-        reset_options = {}
-        if scenario:
-            reset_options['scenario'] = scenario
-        elif background:
-            reset_options['scenario'] = background.to_natural_language()
+        env.reset(
+            agents=agents,
+            options={
+                'scenario': scenario
+                or (background.to_natural_language() if background else None)
+            },
+        )
 
-        env.reset(agents=agents, options=reset_options if reset_options else None)
-
-        # Run conversation
-        num_agents = len(agents)
-        logger.info(f'=== {num_agents}-Agent Conversation Starting ===')
-
-        if background:
-            logger.info(background.to_natural_language())
-        elif scenario:
-            logger.info(scenario)
-
+        logger.info(f'Starting {len(agents)}-agent conversation')
         await self._run_conversation_loop(env, agents)
+        logger.info(f'Conversation ended after {env.get_turn_number()} turns')
 
-        logger.info(f'=== {len(agents)}-Agent Conversation Ended ===')
-        logger.info(f'Total turns: {env.get_turn_number()}')
-
-        # Run evaluation
         evaluation_results = {}
         if enable_evaluation and terminal_evaluators:
-            logger.info('=== Running Episode Evaluation ===')
             evaluation_results = await env.evaluate_episode()
             self._log_evaluation_results(evaluation_results)
 
-        # Return log if requested
-        if return_log:
-            episode_log = self._create_episode_log(agent_configs, evaluation_results)
-        else:
-            episode_log = None
+        self._save_conversation_log(
+            env,
+            agent_configs,
+            evaluation_results,
+            scenario,
+            background,
+            max_turns,
+            action_order,
+        )
 
-        # Auto-save conversation to JSON
-        try:
-            # Extract conversation history from environment inbox
-            conversation_history = []
-            if hasattr(env, 'inbox') and env.inbox:
-                for source, message in env.inbox:
-                    if source != 'Environment':  # Skip environment messages
-                        conversation_history.append(
-                            {
-                                'agent': source,
-                                'content': message.to_natural_language(),
-                                'turn': len(conversation_history) + 1,
-                            }
-                        )
+        return self._create_episode_log(agent_configs, evaluation_results)
 
-            # Prepare agent profiles from configs
-            agent_profile = {}
-            for config in agent_configs:
-                agent_name = config['name']
-                agent_profile[agent_name] = {
-                    'name': agent_name,
-                    'type': config.get('type', 'llm'),
-                    'goal': config.get('goal', ''),
-                    'background': config.get('background', ''),
-                }
+    def _validate_models(
+        self, agent_configs: list[dict[str, Any]], default_model_name: str
+    ) -> None:
+        for config in agent_configs:
+            name = config['name']
+            agent_provider_key = config.get('model_provider')
 
-            # Prepare environment profile
-            environment_profile = {
-                'scenario': scenario if scenario else '',
-                'background': background.to_natural_language() if background else '',
-                'max_turns': max_turns,
-                'action_order': action_order,
-                'total_turns': env.get_turn_number(),
-                'agents': [config['name'] for config in agent_configs],
-            }
+            if agent_provider_key and agent_provider_key not in self.model_providers:
+                raise ValueError(
+                    f"Model provider '{agent_provider_key}' for agent '{name}' not available. "
+                    f'Available providers: {list(self.model_providers.keys())}'
+                )
 
-            # Save to JSON using the original json_saver function
-            save_conversation_to_json(
-                agent_profile=agent_profile,
-                environment_profile=environment_profile,
-                conversation_history=conversation_history,
-                evaluation=evaluation_results,
-                output_dir='conversation_logs',
-            )
-        except Exception as e:
-            logger.warning(f'Failed to save conversation to JSON: {e}')
+    def _create_evaluators(
+        self, max_turns: int, enable_evaluation: bool
+    ) -> tuple[list, list]:
+        evaluators = [RuleBasedTerminatedEvaluator(max_turn_number=max_turns)]
+        terminal_evaluators = []
 
-        return episode_log
+        if enable_evaluation:
+            for plugin in self.plugin_manager.get_evaluators():
+                if hasattr(plugin, 'get_terminal_evaluator'):
+                    terminal_eval = plugin.get_terminal_evaluator()
+                    if terminal_eval:
+                        terminal_evaluators.append(terminal_eval)
+                else:
+                    evaluators.append(plugin)
+
+        return evaluators, terminal_evaluators
 
     async def _create_agents(
         self,
         agent_configs: list[dict[str, Any]],
         background: TinyChatBackground | None,
-        model_name: str,
+        default_model_name: str,
     ) -> dict[str, Any]:
-        """Create agents with dependency injection"""
+        """
+        Create agents with simplified model_provider configuration
+
+        Agent config format:
+        {
+            "name": "Alice",
+            "type": "llm",
+            "model_provider": "provider_key",  # optional: provider from config, uses default if not specified
+            "goal": "Agent's goal",            # optional: generated by background
+            "script_like": False,              # optional: generation mode
+        }
+        """
         agents = {}
-        provider = self.model_providers[model_name]
 
         for config in agent_configs:
-            agent_type = config.get('type', 'llm')
             name = config['name']
+            agent_type = config.get('type', 'llm')
+            agent_provider_key = config.get('model_provider')
 
-            if agent_type == 'llm':
-                agent = LLMAgent(
-                    agent_name=name,
-                    model_name=model_name,
-                )
+            if agent_type != 'llm':
+                raise ValueError(f'Unsupported agent type: {agent_type}')
 
-                # Inject model provider (future enhancement)
-                # agent.set_model_provider(provider)
-
-            elif agent_type == 'human':
-                agent = HumanAgent(
-                    agent_name=name,
-                )
-
+            if agent_provider_key:
+                if agent_provider_key not in self.model_providers:
+                    raise ValueError(
+                        f"Model provider '{agent_provider_key}' for agent '{name}' not available. "
+                        f'Available providers: {list(self.model_providers.keys())}'
+                    )
+                provider = self.model_providers[agent_provider_key]
             else:
-                raise ValueError(f'Unknown agent type: {agent_type}')
+                if default_model_name not in self.model_providers:
+                    provider = None
+                else:
+                    provider = self.model_providers[default_model_name]
 
-            # Set goal if provided
+            logger.info(
+                f"Creating {name} with provider '{type(provider).__name__ if provider else 'default'}'"
+            )
+
+            agent = LLMAgent(
+                agent_name=name,
+                model_provider=provider,
+                script_like=config.get('script_like', False),
+            )
+
             if 'goal' in config:
                 agent.goal = config['goal']
-            elif background and agent_type == 'llm':
-                # Generate goal using the provider
-                from ..generator import agenerate_goal
-
-                agent.goal = await agenerate_goal(
-                    model_name=model_name,
-                    background=background.to_natural_language(),
+            elif background:
+                agent.goal = await agent._model_provider.agenerate_goal(
+                    background=background.to_natural_language()
                 )
 
             agents[name] = agent
@@ -281,7 +234,6 @@ class TinyChatServer:
                 observation = env.get_observation(name)
                 action = await agent.act(observation)
                 actions[name] = action
-
                 logger.info(f'{name}: {action.to_natural_language()}')
 
             await env.astep(actions)
@@ -292,7 +244,7 @@ class TinyChatServer:
             logger.info(f'Evaluation: {results["message"]}')
             return
 
-        logger.info(f'Conversation Terminated: {results.get("terminated", False)}')
+        logger.info(f"Conversation terminated: {results.get('terminated', False)}")
 
         # Log agent scores
         agent_scores = {}
@@ -309,14 +261,59 @@ class TinyChatServer:
         for agent_name, score in agent_scores.items():
             logger.info(f'{agent_name} Overall Score: {score:.2f}')
 
-        for agent_name, details in agent_details.items():
-            logger.info(f'{agent_name} Detailed Scores:')
-            for dimension, score in details.items():
-                if dimension != 'overall_score':
-                    logger.info(f'  {dimension}: {score}')
+    def _save_conversation_log(
+        self,
+        env: TinyChatEnvironment,
+        agent_configs: list[dict[str, Any]],
+        evaluation_results: dict[str, Any],
+        scenario: str | None,
+        background: TinyChatBackground | None,
+        max_turns: int,
+        action_order: str,
+    ) -> None:
+        try:
+            conversation_history = []
+            if hasattr(env, 'inbox') and env.inbox:
+                for source, message in env.inbox:
+                    if source != 'Environment':
+                        conversation_history.append(
+                            {
+                                'agent': source,
+                                'content': message.to_natural_language(),
+                                'turn': len(conversation_history) + 1,
+                            }
+                        )
 
-        if results.get('comments'):
-            logger.info(f'Evaluation Comments: {results["comments"]}')
+            agent_profile = {
+                config['name']: {
+                    'name': config['name'],
+                    'type': config.get('type', 'llm'),
+                    'model': config.get('model_name', 'default'),
+                    'goal': config.get('goal', ''),
+                }
+                for config in agent_configs
+            }
+
+            environment_profile = {
+                'scenario': scenario
+                or (background.to_natural_language() if background else ''),
+                'max_turns': max_turns,
+                'action_order': action_order,
+                'total_turns': env.get_turn_number(),
+                'agents': [config['name'] for config in agent_configs],
+            }
+
+            save_conversation_to_json(
+                agent_profile=agent_profile,
+                environment_profile=environment_profile,
+                conversation_history=conversation_history,
+                evaluation=evaluation_results,
+                output_dir='conversation_logs',
+            )
+            logger.info('Conversation saved to conversation_logs/')
+
+        except Exception as e:
+            logger.warning(f'Failed to save conversation: {e}')
 
     def _create_episode_log(
         self, agent_configs: list[dict[str, Any]], evaluation_results: dict[str, Any]
@@ -325,69 +322,51 @@ class TinyChatServer:
         rewards = []
         for config in agent_configs:
             agent_name = config['name']
-            score_key = f'{agent_name}_score'
-            details_key = f'{agent_name}_details'
-
-            if score_key in evaluation_results:
-                rewards.append(
-                    (
-                        evaluation_results[score_key],
-                        evaluation_results.get(details_key, {}),
-                    )
-                )
-            else:
-                rewards.append((0.0, {}))
+            score = evaluation_results.get(f'{agent_name}_score', 0.0)
+            details = evaluation_results.get(f'{agent_name}_details', {})
+            rewards.append((score, details))
 
         return EpisodeLog(
             environment='TinyChat',
             agents=[c['name'] for c in agent_configs],
-            messages=[],  # TODO: Extract from environment
+            messages=[],
             rewards=rewards,
             reasoning=evaluation_results.get('comments', ''),
-            models=[c.get('model', self.config.default_model) for c in agent_configs],
+            models=[
+                c.get('model_name', self.config.default_model) for c in agent_configs
+            ],
         )
 
     async def get_model_info(self, model_name: str | None = None) -> dict[str, Any]:
-        """Get information about available models"""
         if model_name:
             if model_name not in self.model_providers:
                 raise ValueError(f"Model '{model_name}' not found")
 
             provider = self.model_providers[model_name]
-            health = await provider.check_health()
-
             return {
                 'name': provider.name,
                 'type': provider.type,
                 'config': provider.config.dict(),
-                'healthy': health,
+                'healthy': await provider.check_health(),
             }
         else:
-            # Return info for all models
-            models = {}
-            for name, provider in self.model_providers.items():
-                health = await provider.check_health()
-                models[name] = {
+            return {
+                name: {
                     'name': provider.name,
                     'type': provider.type,
-                    'healthy': health,
+                    'healthy': await provider.check_health(),
                 }
-            return models
+                for name, provider in self.model_providers.items()
+            }
 
     async def shutdown(self) -> None:
-        """Shutdown the server"""
         logger.info('Shutting down TinyChat Server...')
-
-        # TODO: Cleanup resources
         self.model_providers.clear()
-
         logger.info('Server shutdown complete')
 
 
-# Server lifecycle management
 @asynccontextmanager
 async def create_server(config: ServerConfig | None = None):
-    """Create and manage server lifecycle"""
     server = TinyChatServer(config)
     try:
         await server.initialize()
