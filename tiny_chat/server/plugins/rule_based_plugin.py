@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from ...evaluator import RuleBasedTerminatedEvaluator
 from .base import EvaluatorPlugin
@@ -10,13 +10,12 @@ logger = logging.getLogger(__name__)
 class RuleBasedPlugin(EvaluatorPlugin):
     """Rule-based evaluator plugin using TinyChat's existing evaluator"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__(config)
 
         self.max_turn_number = config.get('max_turn_number', 20)
         self.max_stale_turn = config.get('max_stale_turn', 2)
 
-        # Create the underlying evaluator
         self.evaluator = RuleBasedTerminatedEvaluator(
             max_turn_number=self.max_turn_number, max_stale_turn=self.max_stale_turn
         )
@@ -26,8 +25,8 @@ class RuleBasedPlugin(EvaluatorPlugin):
         return 'rule_based'
 
     async def evaluate(
-        self, turn_number: int, messages: List[Tuple[str, Any]]
-    ) -> List[Tuple[str, Tuple[Tuple[str, int | float | bool], str]]]:
+        self, turn_number: int, messages: list[tuple[str, Any]]
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         """Evaluate conversation turn using rules"""
         try:
             converted_messages = []

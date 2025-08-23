@@ -1,7 +1,7 @@
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
-from ...evaluator import EpisodeLLMEvaluator, TinyChatDimensions
+from ...evaluator import EpisodeLLMEvaluator, SotopiaDimensions
 from ..providers import BaseModelProvider
 from .base import EvaluatorPlugin
 
@@ -15,17 +15,15 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
         super().__init__(config)
 
         self.model_provider: BaseModelProvider | None = config.get('model_provider')
-        self.model_name: str = config.get('model_name', 'gpt-4o-mini')
         self.dimensions = config.get('dimensions', 'sotopia')
 
         if self.dimensions == 'sotopia':
-            self.evaluator = EpisodeLLMEvaluator[TinyChatDimensions](
-                model_name=self.model_name
+            self.evaluator = EpisodeLLMEvaluator[SotopiaDimensions](
+                model_provider=self.model_provider
             )
         else:
-            # Default to TinyChatDimensions for now
-            self.evaluator = EpisodeLLMEvaluator[TinyChatDimensions](
-                model_name=self.model_name
+            self.evaluator = EpisodeLLMEvaluator[SotopiaDimensions](
+                model_provider=self.model_provider
             )
 
     @property
@@ -33,8 +31,8 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
         return 'llm'
 
     async def evaluate(
-        self, turn_number: int, messages: List[Tuple[str, Any]]
-    ) -> List[Tuple[str, Tuple[Tuple[str, int | float | bool], str]]]:
+        self, turn_number: int, messages: list[tuple[str, Any]]
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         """Evaluate conversation turn using LLM"""
         try:
             converted_messages = []
@@ -57,6 +55,6 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
             logger.error(f'LLM evaluation failed: {e}')
             return []
 
-    def get_terminal_evaluator(self) -> EpisodeLLMEvaluator[TinyChatDimensions]:
+    def get_terminal_evaluator(self) -> EpisodeLLMEvaluator[SotopiaDimensions]:
         """Return the underlying evaluator for terminal evaluation"""
         return self.evaluator

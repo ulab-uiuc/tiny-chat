@@ -66,7 +66,7 @@ Tiny Chat is a simplified multi-agent chat system inspired by [Sotopia](https://
 - **Key Components**:
   - `RuleBasedTerminatedEvaluator`: Rule-based conversation termination
   - `EpisodeLLMEvaluator`: LLM-based conversation evaluation
-  - `TinyChatDimensions`: Evaluation metrics (goal achievement, social intelligence, etc.)
+  - `SotopiaDimensions`: Evaluation metrics (goal achievement, social intelligence, etc.)
 - **Features**:
   - Multi-dimensional evaluation
   - Automatic conversation termination

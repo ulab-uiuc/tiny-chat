@@ -165,6 +165,7 @@ async def agenerate(
     structured_output: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    max_parse_retries: int = 3,
 ) -> OutputType:
     """Generate text using LiteLLM instead of Langchain."""
     if 'format_instructions' not in input_values:
@@ -217,25 +218,47 @@ async def agenerate(
         api_key=api_key,
     )
     result = response.choices[0].message.content
-    try:
-        parsed_result = output_parser.parse(result)
-    except Exception as e:
-        if isinstance(output_parser, ScriptOutputParser):
-            raise e
-        log.debug(
-            f'[red] Failed to parse result: {result}\nEncounter Exception {e}\nstart to reparse',
-            extra={'markup': True},
-        )
-        reformat_result = await format_bad_output(
-            result,
-            output_parser.get_format_instructions(),
-            bad_output_process_model or model_name,
-            use_fixed_model_version,
-        )
-        parsed_result = output_parser.parse(reformat_result)
 
-    log.info(f'Generated result: {parsed_result}')
-    return parsed_result
+    max_retries = max_parse_retries
+    for attempt in range(max_retries):
+        try:
+            if attempt == 0:
+                parsed_result = output_parser.parse(result)
+            else:
+                log.debug(
+                    f'[yellow] Parse attempt {attempt + 1}/{max_retries}: Reformatting result',
+                    extra={'markup': True},
+                )
+                reformat_result = await format_bad_output(
+                    result,
+                    output_parser.get_format_instructions(),
+                    bad_output_process_model or model_name,
+                    use_fixed_model_version,
+                )
+                parsed_result = output_parser.parse(reformat_result)
+
+            log.info(f'Generated result (attempt {attempt + 1}): {parsed_result}')
+            return parsed_result
+
+        except Exception as e:
+            if isinstance(output_parser, ScriptOutputParser):
+                raise e
+
+            if attempt == max_retries - 1:
+                log.error(
+                    f'[red] Failed to parse result after {max_retries} attempts. '
+                    f'Last error: {e}\nFinal result: {result}',
+                    extra={'markup': True},
+                )
+                raise e
+            else:
+                log.debug(
+                    f'[red] Parse attempt {attempt + 1} failed: {e}\nRetrying...',
+                    extra={'markup': True},
+                )
+                continue
+
+    raise RuntimeError(f'Unexpected error in parsing after {max_retries} attempts')
 
 
 @validate_call
@@ -299,6 +322,7 @@ async def agenerate_action(
     script_like: bool = False,
     bad_output_process_model: str | None = None,
     use_fixed_model_version: bool = True,
+    max_parse_retries: int = 3,
 ) -> AgentAction:
     """
     Using langchain to generate an example episode
@@ -308,7 +332,6 @@ async def agenerate_action(
             # model as playwright
             template = ACTION_SCRIPT_TEMPLATE
         else:
-            # Normal case, model as agent
             template = ACTION_NORMAL_TEMPLATE
         return await agenerate(
             model_name=model_name,
@@ -323,6 +346,7 @@ async def agenerate_action(
             temperature=temperature,
             bad_output_process_model=bad_output_process_model,
             use_fixed_model_version=use_fixed_model_version,
+            max_parse_retries=max_parse_retries,
         )
     except Exception as e:
         log.warning(f'Failed to generate action due to {e}')

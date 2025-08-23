@@ -2,7 +2,7 @@ import asyncio
 import logging
 import uuid
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,13 +11,12 @@ from pydantic import BaseModel, Field
 
 from ..messages import TinyChatBackground
 from ..utils import EpisodeLog
-from .config import ServerConfig, get_config
+from .config import get_config
 from .core import TinyChatServer, create_server
 
 logger = logging.getLogger(__name__)
 
-# Global server instance
-server_instance: Optional[TinyChatServer] = None
+server_instance: TinyChatServer | None = None
 
 
 @asynccontextmanager
@@ -69,24 +68,24 @@ class AgentConfig(BaseModel):
 
     name: str = Field(description='Agent name')
     type: str = Field(default='llm', description='Agent type')
-    goal: Optional[str] = Field(default=None, description='Agent goal')
-    profile: Optional[Dict[str, Any]] = Field(default=None, description='Agent profile')
+    goal: str | None = Field(default=None, description='Agent goal')
+    profile: dict[str, Any] | None = Field(default=None, description='Agent profile')
 
 
 class ConversationRequest(BaseModel):
     """Request to create a conversation"""
 
-    agent_configs: List[AgentConfig] = Field(description='Agent configurations')
-    background: Optional[Dict[str, Any]] = Field(
+    agent_configs: list[AgentConfig] = Field(description='Agent configurations')
+    background: dict[str, Any] | None = Field(
         default=None, description='Conversation background'
     )
-    scenario: Optional[str] = Field(default=None, description='Scenario description')
-    max_turns: Optional[int] = Field(
+    scenario: str | None = Field(default=None, description='Scenario description')
+    max_turns: int | None = Field(
         default=None, description='Maximum conversation turns'
     )
     enable_evaluation: bool = Field(default=True, description='Enable evaluation')
-    action_order: Optional[str] = Field(default=None, description='Agent action order')
-    model_name: Optional[str] = Field(default=None, description='Model to use')
+    action_order: str | None = Field(default=None, description='Agent action order')
+    model_name: str | None = Field(default=None, description='Model to use')
     return_log: bool = Field(default=False, description='Return detailed log')
 
 
@@ -97,13 +96,13 @@ class ConversationResponse(BaseModel):
     status: str = Field(description='Conversation status')
     agent_count: int = Field(description='Number of agents')
     model_used: str = Field(description='Model used for the conversation')
-    turn_count: Optional[int] = Field(
+    turn_count: int | None = Field(
         default=None, description='Number of turns completed'
     )
-    evaluation_results: Optional[Dict[str, Any]] = Field(
+    evaluation_results: dict[str, Any] | None = Field(
         default=None, description='Evaluation results'
     )
-    episode_log: Optional[EpisodeLog] = Field(
+    episode_log: EpisodeLog | None = Field(
         default=None, description='Detailed episode log'
     )
 
@@ -113,7 +112,7 @@ class HealthResponse(BaseModel):
 
     status: str = Field(description='Service status')
     version: str = Field(description='API version')
-    server_config: Dict[str, Any] = Field(description='Server configuration summary')
+    server_config: dict[str, Any] = Field(description='Server configuration summary')
 
 
 class ModelInfo(BaseModel):
@@ -122,16 +121,12 @@ class ModelInfo(BaseModel):
     name: str = Field(description='Model name')
     type: str = Field(description='Model provider type')
     healthy: bool = Field(description='Model health status')
-    config: Optional[Dict[str, Any]] = Field(
+    config: dict[str, Any] | None = Field(
         default=None, description='Model configuration'
     )
 
 
-# In-memory conversation storage (for demo purposes)
-conversations: Dict[str, Dict[str, Any]] = {}
-
-
-# API Endpoints
+conversations: dict[str, dict[str, Any]] = {}
 
 
 @app.get('/health', response_model=HealthResponse)
@@ -151,7 +146,7 @@ async def health_check(server: TinyChatServer = Depends(get_server)):
     )
 
 
-@app.get('/models', response_model=Dict[str, ModelInfo])
+@app.get('/models', response_model=dict[str, ModelInfo])
 async def list_models(server: TinyChatServer = Depends(get_server)):
     """List available models"""
     model_info = await server.get_model_info()

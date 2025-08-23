@@ -1,12 +1,10 @@
 import logging
 from pathlib import Path
-from typing import Optional
 
 import click
 import uvicorn
 
 from .config import ConfigManager
-from .monitoring import get_metrics_collector, setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +19,11 @@ logger = logging.getLogger(__name__)
 @click.option('--workers', default=None, type=int, help='Number of worker processes')
 @click.option('--reload', is_flag=True, help='Enable auto-reload')
 def serve(
-    config: Optional[str],
+    config: str | None,
     verbose: bool,
-    host: Optional[str],
-    port: Optional[int],
-    workers: Optional[int],
+    host: str | None,
+    port: int | None,
+    workers: int | None,
     reload: bool,
 ):
     """Start the TinyChat API server
@@ -34,7 +32,6 @@ def serve(
     Other operations like health checks, configuration validation, and demos
     are available through the HTTP API or standalone Python scripts.
     """
-    # Load configuration
     if config:
         config_manager = ConfigManager(Path(config))
     else:
@@ -47,7 +44,6 @@ def serve(
     if verbose:
         log_config['level'] = 'DEBUG'
 
-    setup_logging(log_config)
     logger.info('TinyChat Server starting...')
 
     # Override config with CLI options
@@ -65,15 +61,6 @@ def serve(
     logger.info('  GET  /models          - List available models')
     logger.info('  POST /conversations   - Start conversation')
     logger.info('  GET  /conversations/{id} - Get conversation status')
-
-    # Start metrics server if enabled
-    if server_config.enable_metrics:
-        try:
-            metrics_collector = get_metrics_collector()
-            metrics_collector.start_prometheus_server(server_config.metrics_port)
-            logger.info(f'Metrics server started on port {server_config.metrics_port}')
-        except Exception as e:
-            logger.warning(f'Failed to start metrics server: {e}')
 
     # Start API server
     uvicorn.run(
