@@ -22,6 +22,9 @@ class BaseAgentProfile(BaseModel):
     secret: str = Field(default='')
     model_id: str = Field(default='')
     mbti: str = Field(default='')
+    speaking_id: int = Field(
+        description='The unique ID of the agent, used for specifying speaking order'
+    )
     tag: str = Field(
         default='',
         description='The tag of the agent, used for searching, could be convenient to document agent profiles from different works and sources',

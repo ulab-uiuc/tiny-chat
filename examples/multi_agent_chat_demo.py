@@ -1,9 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from tiny_chat.messages import TinyChatBackground
-from tiny_chat.server.config import ConfigManager, ModelProviderConfig, ServerConfig
-from tiny_chat.server.core import TinyChatServer
+from tiny_chat import ConfigManager, TinyChatBackground, TinyChatServer
 
 
 async def tiny_chat_demo_conversation():
@@ -25,16 +23,19 @@ async def tiny_chat_demo_conversation():
             'name': 'Alice',
             'model_provider': 'model1',
             'goal': 'Start an interesting conversation about AI',
+            'speaking_id': 0,
         },
         {
             'name': 'Bob',
             'model_provider': 'model2',
             'goal': 'Respond thoughtfully and ask questions',
+            'speaking_id': 1,
         },
         {
             'name': 'Charlie',
             'model_provider': 'model1',
             'goal': 'Provide unique perspectives on the topic',
+            'speaking_id': 2,
         },
     ]
 

@@ -84,7 +84,13 @@ class ConversationRequest(BaseModel):
         default=None, description='Maximum conversation turns'
     )
     enable_evaluation: bool = Field(default=True, description='Enable evaluation')
-    action_order: str | None = Field(default=None, description='Agent action order')
+    action_order: str | None = Field(
+        default=None,
+        description='Agent action order: simultaneous, round-robin, sequential, random, or agent_id_based',
+    )
+    speaking_order: list[int] | None = Field(
+        default=None, description='List of agent IDs in speaking order'
+    )
     model_name: str | None = Field(default=None, description='Model to use')
     return_log: bool = Field(default=False, description='Return detailed log')
 
@@ -221,6 +227,7 @@ async def create_conversation(
                     max_turns=request.max_turns,
                     enable_evaluation=request.enable_evaluation,
                     action_order=request.action_order,
+                    speaking_order=request.speaking_order,
                     scenario=request.scenario,
                     model_name=model_name,
                     return_log=request.return_log,

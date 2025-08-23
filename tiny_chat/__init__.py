@@ -46,6 +46,12 @@ from .profiles import (
     FineGrainedRelationshipProfile,
     RelationshipType,
 )
+from .server import (
+    ConfigManager,
+    ModelProviderConfig,
+    ModelProviderFactory,
+    TinyChatServer,
+)
 
 __all__ = [
     'LLMAgent',
@@ -88,4 +94,6 @@ __all__ = [
     'BaseRelationshipProfile',
     'FineGrainedRelationshipProfile',
     'RelationshipType',
+    'ModelProviderConfig',
+    'ModelProviderFactory',
 ]
