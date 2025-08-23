@@ -1,4 +1,4 @@
-from .dimensions import SotopiaDimensions, TinyChatDimensions
+from .dimensions import SotopiaDimensions
 from .evaluators import (
     EpisodeLLMEvaluator,
     EvaluationForMultipleAgents,
@@ -9,7 +9,7 @@ from .evaluators import (
 
 __all__ = [
     'Evaluator',
-    'TinyChatDimensions',
+    'SotopiaDimensions',
     'SotopiaDimensions',
     'EpisodeLLMEvaluator',
     'EvaluationForMultipleAgents',

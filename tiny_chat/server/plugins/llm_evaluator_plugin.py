@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-from ...evaluator import EpisodeLLMEvaluator, TinyChatDimensions
+from ...evaluator import EpisodeLLMEvaluator, SotopiaDimensions
 from ...messages import Message
 from ..providers import BaseModelProvider
 from .base import EvaluatorPlugin
@@ -21,12 +21,12 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
 
         # Create the underlying evaluator
         if self.dimensions == 'sotopia':
-            self.evaluator = EpisodeLLMEvaluator[TinyChatDimensions](
+            self.evaluator = EpisodeLLMEvaluator[SotopiaDimensions](
                 model_name=self.model_name
             )
         else:
-            # Default to TinyChatDimensions for now
-            self.evaluator = EpisodeLLMEvaluator[TinyChatDimensions](
+            # Default to SotopiaDimensions for now
+            self.evaluator = EpisodeLLMEvaluator[SotopiaDimensions](
                 model_name=self.model_name
             )
 
