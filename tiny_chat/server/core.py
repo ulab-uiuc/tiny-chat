@@ -4,9 +4,7 @@ from typing import Any
 
 from ..agents import HumanAgent, LLMAgent
 from ..envs import TinyChatEnvironment
-from ..evaluator import (
-    RuleBasedTerminatedEvaluator,
-)
+from ..evaluator import RuleBasedTerminatedEvaluator
 from ..messages import TinyChatBackground
 from ..utils import EpisodeLog
 from ..utils.json_saver import save_conversation_to_json

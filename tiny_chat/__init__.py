@@ -1,45 +1,91 @@
-"""
-Tiny Chat - A simplified multi-agent chat system inspired by Sotopia
-"""
-
 __version__ = '0.0.1'
 
-from .agents import LLMAgent
+from .agents import BaseAgent, HumanAgent, LLMAgent
 from .envs import TinyChatEnvironment
 from .evaluator import (
+    EnvResponse,
+    ListOfIntOutputParser,
+    PydanticOutputParser,
+    ScriptOutputParser,
+    StrOutputParser,
+    agenerate,
+    agenerate_action,
+    agenerate_env_profile,
+    agenerate_goal,
+    agenerate_init_profile,
+    agenerate_relationship_profile,
+    agenerate_script,
+    convert_narratives,
+    format_bad_output,
+    process_history,
+)
+from .evaluators import (
     EpisodeLLMEvaluator,
     EvaluationForMultipleAgents,
     Evaluator,
     RuleBasedTerminatedEvaluator,
-    TinyChatDimensions,
     unweighted_aggregate_evaluate,
 )
 from .messages import (
+    ActionType,
     AgentAction,
     Message,
+    MessengerMixin,
     Observation,
+    ScriptBackground,
+    ScriptEnvironmentResponse,
+    ScriptInteraction,
+    ScriptInteractionReturnType,
     SimpleMessage,
     TinyChatBackground,
 )
-from .profiles import BaseAgentProfile, BaseEnvironmentProfile, BaseRelationshipProfile
+from .profiles import (
+    BaseAgentProfile,
+    BaseEnvironmentProfile,
+    BaseRelationshipProfile,
+    FineGrainedRelationshipProfile,
+    RelationshipType,
+)
 
 __all__ = [
     'LLMAgent',
-    'Message',
-    'SimpleMessage',
-    'Observation',
-    'AgentAction',
-    'TinyChatBackground',
+    'BaseAgent',
+    'HumanAgent',
     'TinyChatEnvironment',
+    'EpisodeLLMEvaluator',
+    'EvaluationForMultipleAgents',
+    'Evaluator',
+    'RuleBasedTerminatedEvaluator',
+    'unweighted_aggregate_evaluate',
+    'ActionType',
+    'AgentAction',
+    'Message',
+    'MessengerMixin',
+    'Observation',
+    'ScriptBackground',
+    'ScriptEnvironmentResponse',
+    'ScriptInteraction',
+    'ScriptInteractionReturnType',
+    'SimpleMessage',
+    'TinyChatBackground',
+    'agenerate',
+    'agenerate_action',
+    'agenerate_env_profile',
+    'agenerate_goal',
+    'agenerate_init_profile',
+    'agenerate_relationship_profile',
+    'agenerate_script',
+    'convert_narratives',
+    'format_bad_output',
+    'process_history',
+    'EnvResponse',
+    'ListOfIntOutputParser',
+    'PydanticOutputParser',
+    'ScriptOutputParser',
+    'StrOutputParser',
     'BaseAgentProfile',
     'BaseEnvironmentProfile',
     'BaseRelationshipProfile',
-    'Evaluator',
-    'RuleBasedTerminatedEvaluator',
-    'EpisodeLLMEvaluator',
-    'TinyChatDimensions',
-    'EvaluationForTwoAgents',
-    'EvaluationForMultipleAgents',
-    'unweighted_aggregate_evaluate',
-    'TinyChatServer',
+    'FineGrainedRelationshipProfile',
+    'RelationshipType',
 ]

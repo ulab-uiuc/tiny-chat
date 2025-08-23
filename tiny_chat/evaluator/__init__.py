@@ -1,17 +1,17 @@
+from .dimensions import SotopiaDimensions
 from .evaluators import (
     EpisodeLLMEvaluator,
     EvaluationForMultipleAgents,
     Evaluator,
     RuleBasedTerminatedEvaluator,
-    TinyChatDimensions,
     unweighted_aggregate_evaluate,
 )
 
 __all__ = [
     'Evaluator',
-    'TinyChatDimensions',
+    'SotopiaDimensions',
+    'SotopiaDimensions',
     'EpisodeLLMEvaluator',
-    'EvaluationForTwoAgents',
     'EvaluationForMultipleAgents',
     'RuleBasedTerminatedEvaluator',
     'unweighted_aggregate_evaluate',
