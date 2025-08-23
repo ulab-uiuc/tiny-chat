@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class LLMEvaluatorPlugin(EvaluatorPlugin):
     """LLM-based evaluator plugin using TinyChat's existing evaluator"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__(config)
 
         self.model_provider: BaseModelProvider | None = config.get('model_provider')

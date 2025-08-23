@@ -1,17 +1,17 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 
 class EvaluatorPlugin(ABC):
     """Base class for evaluator plugins"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
 
     @abstractmethod
     async def evaluate(
-        self, turn_number: int, messages: List[Tuple[str, Any]]
-    ) -> List[Tuple[str, Tuple[Tuple[str, int | float | bool], str]]]:
+        self, turn_number: int, messages: list[tuple[str, Any]]
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         """Evaluate conversation turn"""
         pass
 
