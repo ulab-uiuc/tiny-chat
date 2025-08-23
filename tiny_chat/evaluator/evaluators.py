@@ -147,12 +147,7 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                     if sender != 'Environment' and sender not in agent_names:
                         agent_names.append(sender)
 
-            class MultiAgentEvaluation(BaseModel):
-                agent_evaluations: dict[str, self.response_format_class] = Field(
-                    description='Evaluations for each agent, keyed by agent name'
-                )
-
-            EvaluationClass = MultiAgentEvaluation
+            EvaluationClass = EvaluationForMultipleAgents
 
             # Generate evaluation using agenerate
             response = await agenerate(
@@ -217,15 +212,6 @@ Please follow the format:
             print(e)
             log.debug(f'[red] Failed to generate environment response. {e}')
             return []
-
-
-class TinyChatDimensions(BaseModel):
-    """Evaluation dimensions used in Sotopia"""
-
-    overall_score: tuple[str, float] = ('Overall score', 0.0)
-    goal_achievement: tuple[str, float] = ('Goal achievement', 0.0)
-    social_intelligence: tuple[str, float] = ('Social intelligence', 0.0)
-    communication_quality: tuple[str, float] = ('Communication quality', 0.0)
 
 
 class EvaluationForMultipleAgents(BaseModel, Generic[T_eval_dim]):
