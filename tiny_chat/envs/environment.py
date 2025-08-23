@@ -16,6 +16,7 @@ from tiny_chat.messages import (
     SimpleMessage,
     TinyChatBackground,
 )
+from tiny_chat.utils.logger import logger
 
 TBackground = TypeVar('TBackground', bound=ScriptBackground)
 
@@ -67,12 +68,13 @@ class TinyChatEnvironment(BaseChatEnivronment):
         self,
         available_action_types: set[ActionType] = DEFAULT_ACTION_TYPES,
         action_order: Literal[
-            'simultaneous', 'round-robin', 'sequential', 'random'
+            'simultaneous', 'round-robin', 'sequential', 'random', 'agent_id_based'
         ] = 'simultaneous',
         evaluators: list[Evaluator] | None = None,
         model_name: str = 'gpt-4o-mini',
         terminal_evaluators: list[Evaluator] | None = None,
         max_turns: int = 20,
+        speaking_order: list[int] | None = None,
     ) -> None:
         """Initialize the unified chat environment."""
         super().__init__()
@@ -82,6 +84,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         self.terminal_evaluators = terminal_evaluators or []
         self.model_name = model_name
         self.max_turns = max_turns
+        self.speaking_order = speaking_order
 
         self.agents: list[Any] = []
         self.agent_names: list[str] = []
@@ -126,6 +129,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
         self.agent_names = list(agents.keys())
         self._omniscient = bool(omniscient)
 
+        if self.action_order == 'agent_id_based':
+            self._sort_agents_by_speaking_order(agents)
+
         self._setup_unified_background(agents, options, omniscient, lite)
 
         self.action_spaces = {
@@ -161,6 +167,32 @@ class TinyChatEnvironment(BaseChatEnivronment):
             )
 
         return initial_obs
+
+    def _sort_agents_by_speaking_order(self, agents: dict[str, Any]) -> None:
+        """Sort agents by their speaking_order list."""
+        if not self.speaking_order:
+            return
+
+        agent_items = list(agents.items())
+
+        def get_speaking_order(item):
+            agent_name, agent = item
+            if hasattr(agent, 'speaking_id'):
+                agent_id = agent.speaking_id
+                try:
+                    return self.speaking_order.index(agent_id)
+                except ValueError:
+                    return len(self.speaking_order)
+            return len(self.speaking_order)
+
+        agent_items.sort(key=get_speaking_order)
+
+        sorted_agents = dict(agent_items)
+        self.agents = list(sorted_agents.values())
+        self.agent_names = list(sorted_agents.keys())
+
+        agents.clear()
+        agents.update(sorted_agents)
 
     def _setup_unified_background(
         self,
@@ -241,6 +273,8 @@ class TinyChatEnvironment(BaseChatEnivronment):
         elif self.action_order == 'random':
             self.action_mask = [False for _ in self.agent_names]
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
+        elif self.action_order == 'agent_id_based':
+            self.action_mask = [True for _ in self.agent_names]
 
     def get_turn_number(self) -> int:
         """Get the current turn number."""
@@ -433,7 +467,6 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
     def _merge_terminal_response(self, response: Any, terminal_response: Any) -> None:
         """Helper method to merge terminal response into main response."""
-        # Merge per_agent_scores from terminal response
         if (
             hasattr(terminal_response, 'per_agent_scores')
             and terminal_response.per_agent_scores
@@ -444,7 +477,6 @@ class TinyChatEnvironment(BaseChatEnivronment):
                 if agent_name not in response.per_agent_scores:
                     response.per_agent_scores[agent_name] = agent_score
 
-        # Merge comments
         if response.comments and terminal_response.comments:
             response.comments += terminal_response.comments
         elif terminal_response.comments:
@@ -479,7 +511,6 @@ class TinyChatEnvironment(BaseChatEnivronment):
                 agent_score = 0.0
                 agent_details = {}
 
-                # Extract score and details from per_agent_scores
                 if hasattr(response, 'per_agent_scores') and response.per_agent_scores:
                     if agent_name in response.per_agent_scores:
                         score_data = response.per_agent_scores[agent_name]
@@ -531,7 +562,6 @@ class TinyChatEnvironment(BaseChatEnivronment):
                 'comments': response.comments or '',
             }
 
-            # Extract scores from per_agent_scores
             if hasattr(response, 'per_agent_scores') and response.per_agent_scores:
                 for agent_name in self.agent_names:
                     if agent_name in response.per_agent_scores:

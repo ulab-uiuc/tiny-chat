@@ -49,10 +49,13 @@ evaluators:
     enabled: true
 
 default_model: "model1"
-action_order: "simultaneous"
+action_order: "agent_id_based"
+speaking_order: [1, 2, 0]
 available_action_types:
   - "none"
   - "speak"
+  - "non-verbal communication"
+  - "action"
   - "leave"
 max_turns: 4
 

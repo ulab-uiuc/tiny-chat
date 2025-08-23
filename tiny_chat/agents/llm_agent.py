@@ -44,6 +44,13 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
         self._model_provider = model_provider or _create_default_model_provider()
         self.script_like = script_like
 
+    @property
+    def speaking_id(self) -> int:
+        """Get the speaking ID of the agent"""
+        if hasattr(self, 'profile') and self.profile:
+            return getattr(self.profile, 'speaking_id', 0)
+        return 0
+
     async def act(self, obs: Observation) -> AgentAction:
         self.recv_message('Environment', obs)
         await self._ensure_goal()
@@ -68,7 +75,7 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
 
     @property
     def uses_provider(self) -> bool:
-        return True  # Always uses provider now
+        return True
 
     @property
     def effective_model_name(self) -> str:

@@ -72,12 +72,14 @@ class TinyChatServer:
         max_turns: int | None = None,
         enable_evaluation: bool = True,
         action_order: str | None = None,
+        speaking_order: list[int] | None = None,
         scenario: str | None = None,
         default_model: str | None = None,
         return_log: bool = False,
     ) -> EpisodeLog | None:
         max_turns = max_turns or self.config.max_turns
         action_order = action_order or self.config.action_order
+        speaking_order = speaking_order or getattr(self.config, 'speaking_order', None)
         default_model_name = default_model or self.config.default_model
 
         self._validate_models(agent_configs, default_model_name)
@@ -92,6 +94,7 @@ class TinyChatServer:
             evaluators=evaluators,
             terminal_evaluators=terminal_evaluators,
             action_order=action_order,
+            speaking_order=speaking_order,
             max_turns=max_turns,
             available_action_types=set(self.config.available_action_types),
         )
@@ -204,11 +207,26 @@ class TinyChatServer:
                 f"Creating {name} with provider '{type(provider).__name__ if provider else 'default'}'"
             )
 
+            # Create agent with existing profile if provided, or create a basic one
             agent = LLMAgent(
                 agent_name=name,
                 model_provider=provider,
                 script_like=config.get('script_like', False),
             )
+
+            if 'speaking_id' in config:
+                if not hasattr(agent, 'profile') or agent.profile is None:
+                    from tiny_chat.profiles import BaseAgentProfile
+
+                    agent.profile = BaseAgentProfile(
+                        first_name=name,
+                        last_name='',
+                        speaking_id=config['speaking_id'],
+                        occupation='',
+                        public_info='',
+                    )
+                else:
+                    agent.profile.speaking_id = config['speaking_id']
 
             if 'goal' in config:
                 agent.goal = config['goal']
@@ -230,11 +248,21 @@ class TinyChatServer:
             logger.info(f'--- Turn {turn_num} ---')
 
             actions = {}
-            for name, agent in agents.items():
-                observation = env.get_observation(name)
-                action = await agent.act(observation)
-                actions[name] = action
-                logger.info(f'{name}: {action.to_natural_language()}')
+
+            if env.action_order == 'agent_id_based' and env.speaking_order:
+                for agent_name in env.agent_names:
+                    if agent_name in agents:
+                        agent = agents[agent_name]
+                        observation = env.get_observation(agent_name)
+                        action = await agent.act(observation)
+                        actions[agent_name] = action
+                        logger.info(f'{agent_name}: {action.to_natural_language()}')
+            else:
+                for name, agent in agents.items():
+                    observation = env.get_observation(name)
+                    action = await agent.act(observation)
+                    actions[name] = action
+                    logger.info(f'{name}: {action.to_natural_language()}')
 
             await env.astep(actions)
 

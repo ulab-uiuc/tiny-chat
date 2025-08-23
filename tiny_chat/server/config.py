@@ -105,8 +105,11 @@ class ServerConfig(BaseModel):
     )
 
     max_turns: int = Field(default=20, description='Maximum conversation turns')
-    action_order: Literal['simultaneous', 'round-robin', 'sequential', 'random'] = (
-        Field(default='simultaneous', description='Agent action order')
+    action_order: Literal[
+        'simultaneous', 'round-robin', 'sequential', 'random', 'agent_id_based'
+    ] = Field(default='simultaneous', description='Agent action order')
+    speaking_order: list[int] | None = Field(
+        default=None, description='List of agent IDs in speaking order'
     )
     available_action_types: list[str] = Field(
         default_factory=lambda: [
