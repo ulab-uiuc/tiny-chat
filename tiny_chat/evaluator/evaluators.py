@@ -111,7 +111,6 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         model_provider: 'BaseModelProvider | None' = None,
         response_format_class: type[T_eval_dim] | None = None,
     ) -> None:
-        # Use provided model_provider or create default one
         self._model_provider = (
             model_provider or _create_default_evaluator_model_provider()
         )
@@ -159,18 +158,14 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             from tiny_chat.generator import agenerate
             from tiny_chat.generator.output_parsers import PydanticOutputParser
 
-            # Extract agent names from the conversation
             agent_names = []
             if messages:
                 for sender, _ in messages:
                     if sender != 'Environment' and sender not in agent_names:
                         agent_names.append(sender)
 
-            # Use the response_format_class to properly type the EvaluationForMultipleAgents
             EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]
 
-            # Generate evaluation using model_provider
-            # Try to use agenerate_evaluation method if available, otherwise fallback to direct agenerate
             if hasattr(self._model_provider, 'agenerate_evaluation'):
                 response = await self._model_provider.agenerate_evaluation(
                     history=history,
@@ -178,7 +173,6 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                     temperature=temperature,
                 )
             else:
-                # Fallback: use agenerate with the provider's model name
                 effective_model_name = self._model_provider._get_agenerate_model_name()
                 response = await agenerate(
                     model_name=effective_model_name,
@@ -205,7 +199,6 @@ Please follow the format:
                 tuple[str, tuple[tuple[str, int | float | bool], str]]
             ] = []
 
-            # Convert response to expected format for multiple agents
             for agent_name in agent_names:
                 if agent_name in response.agent_evaluations:
                     agent_eval = response.agent_evaluations[agent_name]
@@ -217,11 +210,9 @@ Please follow the format:
 
                     for dimension, value in eval_dict.items():
                         if isinstance(value, tuple) and len(value) >= 2:
-                            # Format: (description, score)
                             score = value[1]
                             reasoning = value[0]
                         else:
-                            # Fallback: treat as score
                             score = value
                             reasoning = f'Score for {dimension}'
 

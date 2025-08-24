@@ -8,6 +8,8 @@ from .generate import (
     agenerate_script,
     convert_narratives,
     format_bad_output,
+    generate_action,
+    generate_goal,
     process_history,
 )
 from .output_parsers import (

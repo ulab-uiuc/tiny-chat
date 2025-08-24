@@ -110,13 +110,21 @@ class TinyChatServer:
             },
         )
 
-        logger.info(f'Starting {len(agents)}-agent conversation')
-        await self._run_conversation_loop(env, agents)
+        logger.info(
+            f"Starting {len(agents)}-agent conversation in {'sync' if self.config.sync_mode else 'async'} mode"
+        )
+        if self.config.sync_mode:
+            self._run_conversation_loop_sync(env, agents)
+        else:
+            await self._run_conversation_loop(env, agents)
         logger.info(f'Conversation ended after {env.get_turn_number()} turns')
 
         evaluation_results = {}
         if enable_evaluation and terminal_evaluators:
-            evaluation_results = await env.evaluate_episode()
+            if self.config.sync_mode:
+                evaluation_results = env.evaluate_episode_sync()
+            else:
+                evaluation_results = await env.evaluate_episode()
             self._log_evaluation_results(evaluation_results)
 
         self._save_conversation_log(
@@ -149,6 +157,9 @@ class TinyChatServer:
     ) -> tuple[list, list]:
         evaluators = [RuleBasedTerminatedEvaluator(max_turn_number=max_turns)]
         terminal_evaluators = []
+
+        if self.config.sync_mode:
+            return evaluators, []
 
         if enable_evaluation:
             for plugin in self.plugin_manager.get_evaluators():
@@ -238,10 +249,37 @@ class TinyChatServer:
 
         return agents
 
+    def _run_conversation_loop_sync(
+        self, env: TinyChatEnvironment, agents: dict[str, Any]
+    ) -> None:
+        """Run the conversation loop synchronously"""
+        while not env.is_terminated():
+            turn_num = env.get_turn_number()
+            logger.info(f'--- Turn {turn_num} ---')
+
+            actions = {}
+
+            if env.action_order == 'agent_id_based' and env.speaking_order:
+                for agent_name in env.agent_names:
+                    if agent_name in agents:
+                        agent = agents[agent_name]
+                        observation = env.get_observation(agent_name)
+                        action = agent.act_sync(observation)
+                        actions[agent_name] = action
+                        logger.info(f'{agent_name}: {action.to_natural_language()}')
+            else:
+                for name, agent in agents.items():
+                    observation = env.get_observation(name)
+                    action = agent.act_sync(observation)
+                    actions[name] = action
+                    logger.info(f'{name}: {action.to_natural_language()}')
+
+            env.step(actions)
+
     async def _run_conversation_loop(
         self, env: TinyChatEnvironment, agents: dict[str, Any]
     ) -> None:
-        """Run the conversation loop"""
+        """Run the conversation loop asynchronously"""
         while not env.is_terminated():
             turn_num = env.get_turn_number()
             logger.info(f'--- Turn {turn_num} ---')
@@ -271,7 +309,7 @@ class TinyChatServer:
             logger.info(f'Evaluation: {results["message"]}')
             return
 
-        logger.info(f"Conversation terminated: {results.get('terminated', False)}")
+        logger.info(f'Conversation terminated: {results.get("terminated", False)}')
 
         # Log agent scores
         agent_scores = {}

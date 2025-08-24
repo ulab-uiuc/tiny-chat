@@ -51,7 +51,25 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             return getattr(self.profile, 'speaking_id', 0)
         return 0
 
+    def act_sync(self, obs: Observation) -> AgentAction:
+        """Synchronous version of act method."""
+        self.recv_message('Environment', obs)
+        self._ensure_goal_sync()
+
+        if self._only_none_action(obs.available_actions):
+            return AgentAction(action_type='none', argument='')
+
+        return self._model_provider.generate_action(
+            history=self._history_text(self.inbox),
+            turn_number=obs.turn_number,
+            action_types=obs.available_actions,
+            agent=self.agent_name,
+            goal=self.goal,
+            script_like=self.script_like,
+        )
+
     async def act(self, obs: Observation) -> AgentAction:
+        """Asynchronous version of act method."""
         self.recv_message('Environment', obs)
         await self._ensure_goal()
 
@@ -67,7 +85,15 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
             script_like=self.script_like,
         )
 
+    def _ensure_goal_sync(self) -> None:
+        """Synchronous version of _ensure_goal method."""
+        if self._goal is not None:
+            return
+        background = self._first_message_text() or ''
+        self._goal = self._model_provider.generate_goal(background=background)
+
     async def _ensure_goal(self) -> None:
+        """Asynchronous version of _ensure_goal method."""
         if self._goal is not None:
             return
         background = self._first_message_text() or ''

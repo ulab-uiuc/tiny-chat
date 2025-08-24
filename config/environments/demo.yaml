@@ -58,6 +58,7 @@ available_action_types:
   - "action"
   - "leave"
 max_turns: 4
+# sync_mode: true
 
 logging:
   level: "INFO"

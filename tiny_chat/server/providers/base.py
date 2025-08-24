@@ -1,7 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from tiny_chat.generator import agenerate, agenerate_action, agenerate_goal
+from tiny_chat.generator import (
+    agenerate,
+    agenerate_action,
+    agenerate_goal,
+    generate_action,
+    generate_goal,
+)
 
 from ..config import ModelProviderConfig
 
@@ -66,12 +72,55 @@ class BaseModelProvider(ABC):
             **kwargs,
         )
 
+    def generate_action(
+        self,
+        history: str,
+        turn_number: int,
+        action_types: list[str],
+        agent: str,
+        goal: str,
+        script_like: bool = False,
+        temperature: float | None = None,
+        **kwargs,
+    ) -> Any:
+        """Synchronous version of action generation"""
+        model_name = self._get_agenerate_model_name()
+
+        return generate_action(
+            model_name=model_name,
+            history=history,
+            turn_number=turn_number,
+            action_types=action_types,
+            agent=agent,
+            goal=goal,
+            temperature=temperature or self.config.temperature,
+            script_like=script_like,
+            **kwargs,
+        )
+
+    def generate_goal(
+        self,
+        background: str,
+        temperature: float | None = None,
+        **kwargs,
+    ) -> str:
+        """Synchronous version of goal generation"""
+        model_name = self._get_agenerate_model_name()
+
+        return generate_goal(
+            model_name=model_name,
+            background=background,
+            temperature=temperature or self.config.temperature,
+            **kwargs,
+        )
+
     async def agenerate_goal(
         self,
         background: str,
         temperature: float | None = None,
         **kwargs,
     ) -> str:
+        """Asynchronous version of goal generation"""
         model_name = self._get_agenerate_model_name()
 
         return await agenerate_goal(
