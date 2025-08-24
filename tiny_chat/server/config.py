@@ -126,6 +126,10 @@ class ServerConfig(BaseModel):
     api: APIConfig = Field(default_factory=APIConfig)
     enable_metrics: bool = Field(default=True, description='Enable metrics collection')
     metrics_port: int = Field(default=9090, description='Metrics server port')
+    sync_mode: bool = Field(
+        default=False,
+        description='Run in synchronous mode with only RuleBasedTerminatedEvaluator',
+    )
 
     @validator('default_model')
     def validate_default_model(cls, v, values):

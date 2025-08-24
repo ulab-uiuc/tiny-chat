@@ -45,6 +45,12 @@ class BaseChatEnivronment(ABC):
         pass
 
     @abstractmethod
+    def step(
+        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
+    ) -> Any:
+        pass
+
+    @abstractmethod
     def astep(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
     ) -> Any:
@@ -343,6 +349,40 @@ class TinyChatEnvironment(BaseChatEnivronment):
         return len(self.agent_names)
 
     @validate_call
+    def step(
+        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
+    ) -> tuple[
+        dict[str, Observation],
+        dict[str, float],
+        dict[str, bool],
+        dict[str, bool],
+        dict[str, dict[Any, Any]],
+    ]:
+        """Execute one step in the environment (synchronous version)."""
+        self.turn_number += 1
+
+        complied_actions = self._process_actions(actions)
+        self._mask_actions(complied_actions)
+        self._record_turn_messages(complied_actions)
+
+        response = self._run_evaluators_sync()
+
+        self._update_state()
+
+        obs = _actions_to_natural_language(complied_actions)
+        observations = self._create_observations(obs)
+
+        rewards = self._build_rewards(response)
+        truncated = dict.fromkeys(self.agent_names, False)
+        terminated_flag = self.is_terminated() or bool(
+            getattr(response, 'terminated', False)
+        )
+        terminated_dict = dict.fromkeys(self.agent_names, terminated_flag)
+        info = self._build_info(response)
+
+        return observations, rewards, terminated_dict, truncated, info
+
+    @validate_call
     async def astep(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
     ) -> tuple[
@@ -435,8 +475,45 @@ class TinyChatEnvironment(BaseChatEnivronment):
             )
         return observations
 
+    def _run_evaluators_sync(self) -> Any:
+        """Run evaluators synchronously."""
+        if not self.evaluators:
+            return None
+
+        response = unweighted_aggregate_evaluate(
+            list(
+                itertools.chain(
+                    *[
+                        evaluator(
+                            turn_number=self.turn_number,
+                            messages=self.inbox,
+                        )
+                        for evaluator in self.evaluators
+                    ]
+                )
+            )
+        )
+
+        if response and response.terminated and self.terminal_evaluators:
+            terminal_response = unweighted_aggregate_evaluate(
+                list(
+                    itertools.chain(
+                        *[
+                            evaluator(
+                                turn_number=self.turn_number,
+                                messages=self.inbox,
+                            )
+                            for evaluator in self.terminal_evaluators
+                        ]
+                    )
+                )
+            )
+            self._merge_terminal_response(response, terminal_response)
+
+        return response
+
     async def _run_evaluators(self) -> Any:
-        """Run evaluators and return response."""
+        """Run evaluators asynchronously."""
         if not self.evaluators:
             return None
 
@@ -546,8 +623,48 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         return info
 
+    def evaluate_episode_sync(self) -> dict[str, Any]:
+        """Evaluate the episode using terminal evaluators (synchronous version)."""
+        if not self.terminal_evaluators:
+            return {'message': 'No terminal evaluators available'}
+
+        try:
+            response = unweighted_aggregate_evaluate(
+                list(
+                    itertools.chain(
+                        *[
+                            evaluator(
+                                turn_number=self.turn_number,
+                                messages=self.inbox,
+                            )
+                            for evaluator in self.terminal_evaluators
+                        ]
+                    )
+                )
+            )
+
+            result = {
+                'terminated': response.terminated,
+                'comments': response.comments or '',
+            }
+
+            if hasattr(response, 'per_agent_scores') and response.per_agent_scores:
+                for agent_name in self.agent_names:
+                    if agent_name in response.per_agent_scores:
+                        score_data = response.per_agent_scores[agent_name]
+                        if isinstance(score_data, tuple) and len(score_data) >= 2:
+                            result[f'{agent_name}_score'] = score_data[0]
+                            if isinstance(score_data[1], dict):
+                                result[f'{agent_name}_details'] = score_data[1]
+                        elif isinstance(score_data, int | float):
+                            result[f'{agent_name}_score'] = score_data
+
+            return result
+        except Exception as e:
+            return {'message': f'Evaluation failed: {str(e)}'}
+
     async def evaluate_episode(self) -> dict[str, Any]:
-        """Evaluate the episode using terminal evaluators."""
+        """Evaluate the episode using terminal evaluators (asynchronous version)."""
         if not self.terminal_evaluators:
             return {'message': 'No terminal evaluators available'}
 

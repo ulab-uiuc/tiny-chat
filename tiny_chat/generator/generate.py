@@ -2,7 +2,7 @@ import os
 from typing import cast
 from urllib.parse import urlparse
 
-from litellm import acompletion
+from litellm import acompletion, completion
 from litellm.litellm_core_utils.get_supported_openai_params import (
     get_supported_openai_params,
 )
@@ -311,6 +311,62 @@ async def agenerate_relationship_profile(
 
 
 @validate_call
+def generate_action(
+    model_name: str,
+    history: str,
+    turn_number: int,
+    action_types: list[ActionType],
+    agent: str,
+    goal: str,
+    temperature: float = 0.7,
+    script_like: bool = False,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+    max_parse_retries: int = 3,
+) -> AgentAction:
+    """
+    Synchronous version of agenerate_action
+    """
+    try:
+        if script_like:
+            # model as playwright
+            template = ACTION_SCRIPT_TEMPLATE
+        else:
+            template = ACTION_NORMAL_TEMPLATE
+
+        api_base, api_key, model_name = _prepare_provider_config(model_name)
+        output_parser = PydanticOutputParser(pydantic_object=AgentAction)
+        format_instructions = output_parser.get_format_instructions()
+        messages = [
+            {
+                'role': 'user',
+                'content': template.format(
+                    agent=agent,
+                    turn_number=str(turn_number),
+                    history=history,
+                    action_list=' '.join(action_types),
+                    format_instructions=format_instructions,
+                ),
+            }
+        ]
+
+        response = completion(
+            model=model_name,
+            messages=messages,
+            temperature=temperature,
+            drop_params=True,
+            base_url=api_base,
+            api_key=api_key,
+        )
+        result = response.choices[0].message.content
+        assert isinstance(result, str)
+        return output_parser.parse(result)
+    except Exception as e:
+        log.warning(f'Failed to generate action due to {e}')
+        return AgentAction(action_type='none', argument='')
+
+
+@validate_call
 async def agenerate_action(
     model_name: str,
     history: str,
@@ -496,6 +552,38 @@ async def convert_narratives(
         )
     else:
         raise ValueError(f'Narrative {narrative} is not supported.')
+
+
+@validate_call
+def generate_goal(
+    model_name: str,
+    background: str,
+    temperature: float = 0.7,
+    bad_output_process_model: str | None = None,
+    use_fixed_model_version: bool = True,
+) -> str:
+    """
+    Synchronous version of agenerate_goal
+    """
+    api_base, api_key, model_name = _prepare_provider_config(model_name)
+    messages = [
+        {
+            'role': 'user',
+            'content': GOAL_TEMPLATE.format(background=background),
+        }
+    ]
+
+    response = completion(
+        model=model_name,
+        messages=messages,
+        temperature=temperature,
+        drop_params=True,
+        base_url=api_base,
+        api_key=api_key,
+    )
+    result = response.choices[0].message.content
+    assert isinstance(result, str)
+    return result
 
 
 @validate_call
