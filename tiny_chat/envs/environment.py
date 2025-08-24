@@ -16,7 +16,6 @@ from tiny_chat.messages import (
     SimpleMessage,
     TinyChatBackground,
 )
-from tiny_chat.utils.logger import logger
 
 TBackground = TypeVar('TBackground', bound=ScriptBackground)
 
@@ -175,6 +174,12 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         agent_items = list(agents.items())
 
+        temp_id_counter = len(self.speaking_order)
+        for agent_name, agent in agent_items:
+            if not hasattr(agent, 'speaking_id'):
+                agent.speaking_id = temp_id_counter
+                temp_id_counter += 1
+
         def get_speaking_order(item):
             agent_name, agent = item
             if hasattr(agent, 'speaking_id'):
@@ -204,34 +209,39 @@ class TinyChatEnvironment(BaseChatEnivronment):
         """Setup unified background for any number of agents."""
         agent_configs = []
 
-        for i, (agent_name, agent) in enumerate(agents.items()):
+        for agent_name, agent in agents.items():
             config = {'name': agent_name}
+
+            if hasattr(agent, 'speaking_id'):
+                agent_id = agent.speaking_id
+            else:
+                agent_id = len(self.speaking_order) if self.speaking_order else 0
 
             if not lite:
                 if hasattr(agent, 'profile'):
                     profile = agent.profile
                     if hasattr(profile, 'to_background_string'):
-                        config['background'] = profile.to_background_string(i)
+                        config['background'] = profile.to_background_string(agent_id)
                     elif hasattr(profile, 'description'):
                         config['background'] = (
-                            f"<root><p viewer='agent_{i}'>{profile.description}</p></root>"
+                            f"<root><p viewer='agent_{agent_id}'>{profile.description}</p></root>"
                         )
                 elif hasattr(agent, 'description'):
                     config['background'] = (
-                        f"<root><p viewer='agent_{i}'>{agent.description}</p></root>"
+                        f"<root><p viewer='agent_{agent_id}'>{agent.description}</p></root>"
                     )
                 else:
                     config['background'] = (
-                        f"<root><p viewer='agent_{i}'>Agent {i}</p></root>"
+                        f"<root><p viewer='agent_{agent_id}'>Agent {agent_id}</p></root>"
                     )
             else:
                 config['background'] = ''
 
             if hasattr(agent, 'goal'):
-                config['goal'] = f"<root viewer='agent_{i}'>{agent.goal}</root>"
+                config['goal'] = f"<root viewer='agent_{agent_id}'>{agent.goal}</root>"
             else:
                 config['goal'] = (
-                    f"<root viewer='agent_{i}'>Achieve your objectives in this conversation</root>"
+                    f"<root viewer='agent_{agent_id}'>Achieve your objectives in this conversation</root>"
                 )
 
             agent_configs.append(config)
@@ -332,7 +342,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         return len(self.agent_names)
 
     @validate_call
-    async def astep(
+    def step(
         self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
     ) -> tuple[
         dict[str, Observation],
@@ -341,24 +351,57 @@ class TinyChatEnvironment(BaseChatEnivronment):
         dict[str, bool],
         dict[str, dict[Any, Any]],
     ]:
-        """Execute one step in the environment (asynchronous version with evaluators)."""
+        """Execute one step in the environment (synchronous version with evaluators)."""
         self.turn_number += 1
 
         complied_actions = self._process_actions(actions)
         self._mask_actions(complied_actions)
         self._record_turn_messages(complied_actions)
 
-        response = await self._run_evaluators()
+        response = None
+        if self.evaluators:
+            from tiny_chat.evaluator import EpisodeLLMEvaluator
+
+            responses = []
+            for evaluator in self.evaluators:
+                if hasattr(evaluator, '__call__') and not isinstance(
+                    evaluator, EpisodeLLMEvaluator
+                ):
+                    response = evaluator(
+                        turn_number=self.turn_number, messages=self.inbox
+                    )
+                    responses.append(response)
+
+            if responses:
+                response = unweighted_aggregate_evaluate(responses)
+
+                if response and response.terminated and self.terminal_evaluators:
+                    terminal_responses = []
+                    for evaluator in self.terminal_evaluators:
+                        if hasattr(evaluator, '__call__') and not isinstance(
+                            evaluator, EpisodeLLMEvaluator
+                        ):
+                            terminal_response = evaluator(
+                                turn_number=self.turn_number, messages=self.inbox
+                            )
+                            terminal_responses.append(terminal_response)
+
+                    if terminal_responses:
+                        terminal_response = unweighted_aggregate_evaluate(
+                            terminal_responses
+                        )
+                        self._merge_terminal_response(response, terminal_response)
 
         self._update_state()
 
         obs = _actions_to_natural_language(complied_actions)
         observations = self._create_observations(obs)
+        breakpoint()
 
         rewards = self._build_rewards(response)
         truncated = dict.fromkeys(self.agent_names, False)
         terminated_flag = self.is_terminated() or bool(
-            getattr(response, 'terminated', False)
+            getattr(response, 'terminated', False) if response else False
         )
         terminated_dict = dict.fromkeys(self.agent_names, terminated_flag)
         info = self._build_info(response)
