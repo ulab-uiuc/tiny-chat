@@ -57,8 +57,8 @@ class TinyChatBackground(ScriptBackground):
     def to_natural_language(self) -> str:
         """Generate natural language description of the background."""
         agent_info = ''
-        for i, config in enumerate(self.agent_configs):
-            agent_name = config.get('name', f'Agent{i+1}')
+        for config in self.agent_configs:
+            agent_name = config.get('name', 'Unknown Agent')
             agent_info += f'\n{agent_name}:'
             if 'background' in config and config['background']:
                 agent_info += f"\n  Background: {config['background']}"

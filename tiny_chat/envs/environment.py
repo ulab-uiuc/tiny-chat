@@ -175,6 +175,12 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         agent_items = list(agents.items())
 
+        temp_id_counter = len(self.speaking_order)
+        for agent_name, agent in agent_items:
+            if not hasattr(agent, 'speaking_id'):
+                agent.speaking_id = temp_id_counter
+                temp_id_counter += 1
+
         def get_speaking_order(item):
             agent_name, agent = item
             if hasattr(agent, 'speaking_id'):
@@ -204,34 +210,39 @@ class TinyChatEnvironment(BaseChatEnivronment):
         """Setup unified background for any number of agents."""
         agent_configs = []
 
-        for i, (agent_name, agent) in enumerate(agents.items()):
+        for agent_name, agent in agents.items():
             config = {'name': agent_name}
+
+            if hasattr(agent, 'speaking_id'):
+                agent_id = agent.speaking_id
+            else:
+                agent_id = len(self.speaking_order) if self.speaking_order else 0
 
             if not lite:
                 if hasattr(agent, 'profile'):
                     profile = agent.profile
                     if hasattr(profile, 'to_background_string'):
-                        config['background'] = profile.to_background_string(i)
+                        config['background'] = profile.to_background_string(agent_id)
                     elif hasattr(profile, 'description'):
                         config['background'] = (
-                            f"<root><p viewer='agent_{i}'>{profile.description}</p></root>"
+                            f"<root><p viewer='agent_{agent_id}'>{profile.description}</p></root>"
                         )
                 elif hasattr(agent, 'description'):
                     config['background'] = (
-                        f"<root><p viewer='agent_{i}'>{agent.description}</p></root>"
+                        f"<root><p viewer='agent_{agent_id}'>{agent.description}</p></root>"
                     )
                 else:
                     config['background'] = (
-                        f"<root><p viewer='agent_{i}'>Agent {i}</p></root>"
+                        f"<root><p viewer='agent_{agent_id}'>Agent {agent_id}</p></root>"
                     )
             else:
                 config['background'] = ''
 
             if hasattr(agent, 'goal'):
-                config['goal'] = f"<root viewer='agent_{i}'>{agent.goal}</root>"
+                config['goal'] = f"<root viewer='agent_{agent_id}'>{agent.goal}</root>"
             else:
                 config['goal'] = (
-                    f"<root viewer='agent_{i}'>Achieve your objectives in this conversation</root>"
+                    f"<root viewer='agent_{agent_id}'>Achieve your objectives in this conversation</root>"
                 )
 
             agent_configs.append(config)
