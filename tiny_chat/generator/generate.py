@@ -350,7 +350,11 @@ async def agenerate_action(
         )
     except Exception as e:
         log.warning(f'Failed to generate action due to {e}')
-        return AgentAction(action_type='none', argument='')
+
+        async def return_default():
+            return AgentAction(action_type='none', argument='')
+
+        return await return_default()
 
 
 @validate_call

@@ -106,8 +106,7 @@ class TinyChatServer:
         env.reset(
             agents=agents,
             options={
-                'scenario': scenario
-                or (background.to_natural_language() if background else None)
+                'scenario': scenario or (background.scenario if background else None)
             },
         )
 
