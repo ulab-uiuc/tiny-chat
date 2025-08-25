@@ -16,7 +16,6 @@ from tiny_chat.messages import (
     SimpleMessage,
     TinyChatBackground,
 )
-from tiny_chat.utils.logger import logger
 
 TBackground = TypeVar('TBackground', bound=ScriptBackground)
 
@@ -81,6 +80,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
         terminal_evaluators: list[Evaluator] | None = None,
         max_turns: int = 20,
         speaking_order: list[int] | None = None,
+        obs_mode: Literal['all', 'local'] = 'all',
+        neighbor_map: dict[str, list[str]] | None = None,
+        local_k: int = 5,
     ) -> None:
         """Initialize the unified chat environment."""
         super().__init__()
@@ -103,6 +105,10 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         self.action_spaces: dict[str, Any] = {}
         self._omniscient: bool = False
+
+        self.obs_mode = obs_mode
+        self._neighbor_map = neighbor_map or {}
+        self.local_k = local_k
 
     def reset_inbox(self) -> None:
         """Reset the message inbox."""
@@ -308,15 +314,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         last_turn = ''
         if self.inbox and self.turn_number > 0:
-            recent_actions = []
-            for source, message in self.inbox[-len(self.agent_names) :]:
-                if isinstance(message, AgentAction) and message.action_type != 'none':
-                    recent_actions.append(f'{source} {message.to_natural_language()}')
-
-            if recent_actions:
-                last_turn = '; '.join(recent_actions)
-            else:
-                last_turn = 'No recent actions'
+            last_turn = self._last_turn_text_for(agent_name)
         else:
             if self._omniscient:
                 last_turn = (
@@ -369,8 +367,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         self._update_state()
 
-        obs = _actions_to_natural_language(complied_actions)
-        observations = self._create_observations(obs)
+        observations = self._create_observations()
 
         rewards = self._build_rewards(response)
         truncated = dict.fromkeys(self.agent_names, False)
@@ -403,8 +400,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         self._update_state()
 
-        obs = _actions_to_natural_language(complied_actions)
-        observations = self._create_observations(obs)
+        observations = self._create_observations()
 
         rewards = self._build_rewards(response)
         truncated = dict.fromkeys(self.agent_names, False)
@@ -460,12 +456,22 @@ class TinyChatEnvironment(BaseChatEnivronment):
             )
         self._update_action_mask()
 
-    def _create_observations(self, obs: str) -> dict[str, Observation]:
-        """Create observations for all agents."""
+    def _create_observations(self) -> dict[str, Observation]:
+        """Create observations for all agents with per-agent last turn view."""
         observations = {}
         for i, agent_name in enumerate(self.agent_names):
             observations[agent_name] = Observation(
-                last_turn=obs,
+                last_turn=self._last_turn_text_for(agent_name)
+                if self.turn_number > 0
+                else (
+                    (self.env_background or self.background)
+                    .create_agent_specific_background(  # type: ignore
+                        agent_name, omniscient=False
+                    )
+                    .to_natural_language()
+                    if not self._omniscient and (self.env_background or self.background)
+                    else (self.env_background or self.background).to_natural_language()  # type: ignore
+                ),
                 turn_number=self.turn_number,
                 available_actions=(
                     list(self.available_action_types)
@@ -734,3 +740,51 @@ class TinyChatEnvironment(BaseChatEnivronment):
     def close(self) -> None:
         """Clean up resources."""
         pass
+
+    def _get_visible_agents(self, agent_name: str) -> list[str]:
+        """Return the visible neighbor set for an agent according to obs control.
+
+        - 'all'  : everyone
+        - 'local': use neighbor_map if provided; otherwise ring neighbors by local_k
+        """
+        if self.obs_mode != 'local':
+            vis = list(self.agent_names)
+        else:
+            if agent_name in self._neighbor_map:
+                vis = list(self._neighbor_map.get(agent_name, []))
+            else:
+                if not self.agent_names:
+                    return []
+                idx = self.agent_names.index(agent_name)
+                n = len(self.agent_names)
+                k = max(0, int(self.local_k))
+                left = [(idx - i) % n for i in range(1, k + 1)]
+                right = [(idx + i) % n for i in range(1, k + 1)]
+                vis_idx = list(dict.fromkeys(left[::-1] + right))
+                vis = [self.agent_names[i] for i in vis_idx]
+            vis = [agent_name] + vis
+        return vis
+
+    def _last_turn_text_for(self, agent_name: str) -> str:
+        """Compose the last-turn natural language, filtered by visible neighbors."""
+        if not self.inbox:
+            return 'No recent actions'
+
+        last_actions: list[tuple[str, AgentAction]] = []
+        for source, msg in reversed(self.inbox):
+            if isinstance(msg, AgentAction):
+                last_actions.append((source, msg))
+                if len(last_actions) >= len(self.agent_names):
+                    break
+            elif isinstance(msg, SimpleMessage) and msg.message.startswith('Turn #'):
+                if last_actions:
+                    break
+
+        last_actions.reverse()
+        visible = set(self._get_visible_agents(agent_name))
+        parts: list[str] = []
+        for source, act in last_actions:
+            if source in visible and act.action_type != 'none':
+                parts.append(f'{source} {act.to_natural_language()}')
+
+        return '; '.join(parts) if parts else 'No recent actions'

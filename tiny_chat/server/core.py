@@ -76,6 +76,7 @@ class TinyChatServer:
         scenario: str | None = None,
         default_model: str | None = None,
         return_log: bool = False,
+        obs_control: dict[str, Any] | None = None,
     ) -> EpisodeLog | None:
         max_turns = max_turns or self.config.max_turns
         action_order = action_order or self.config.action_order
@@ -97,6 +98,9 @@ class TinyChatServer:
             speaking_order=speaking_order,
             max_turns=max_turns,
             available_action_types=set(self.config.available_action_types),
+            obs_mode=(obs_control or {}).get('mode', 'all'),
+            neighbor_map=(obs_control or {}).get('neighbor_map'),
+            local_k=(obs_control or {}).get('local_k', 5),
         )
 
         agents = await self._create_agents(
