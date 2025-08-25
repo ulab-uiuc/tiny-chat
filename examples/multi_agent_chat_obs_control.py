@@ -66,9 +66,9 @@ async def tiny_chat_demo_conversation():
     obs_control = {
         'mode': 'local',
         'neighbor_map': {
-            'Alice': ['Bob'],
-            'Bob': ['Alice', 'Charlie'],
-            'Charlie': ['Bob'],
+            0: [1],
+            1: [0, 2],
+            2: [1],
         },
         'local_k': 1,
     }
