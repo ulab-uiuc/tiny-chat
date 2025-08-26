@@ -1,61 +1,47 @@
-from datasets import load_dataset
+import random
 import json
+from datasets import load_dataset
 from tiny_chat.profiles.agent_profile import BaseAgentProfile
 from tiny_chat.profiles.enviroment_profile import BaseEnvironmentProfile
 from tiny_chat.profiles.relationship_profile import BaseRelationshipProfile, RelationshipType
-import random
 
 
-class dataLoader:
+class DataLoader:
     """a class to load data from hugging face"""
 
-    def __init__(self, 
-                 database_name: str = "skyyyyks/tiny-chat",
-                 agent_profiles_file: str = "agent_profiles.jsonl",
-                 env_profiles_file: str = "environment_profiles.jsonl",
-                 relationship_profiles_file: str = "relationship_profiles.jsonl"
-                 ):
-        self.database = database_name
-        self.agent_profiles_dataset = agent_profiles_file
-        self.env_profiles_dataset = env_profiles_file
-        self.relationship_profiles_dataset = relationship_profiles_file
+    def __init__(self, use_official: bool = True):
+        if use_official:
+            self.hf_repo = "skyyyyks/tiny-chat"
+            self.agent_profiles_dataset = "agent_profiles.jsonl"
+            self.env_profiles_dataset = "environment_profiles.jsonl"
+            self.relationship_profiles_dataset = "relationship_profiles.jsonl"
         self.agent_profiles = None
         self.env_profiles = None
         self.relationship_profiles = None
 
-    def set_huggingface_dataset(self, 
-                                database_name: str = None, 
-                                agent_profiles_file: str = None, 
-                                env_profiles_file: str = None, 
-                                relationship_profiles_file: str = None):
-        if database_name:
-            self.database = database_name
-        if agent_profiles_file:
-            self.agent_profiles_dataset = agent_profiles_file
-        if env_profiles_file:
-            self.env_profiles_dataset = env_profiles_file
-        if relationship_profiles_file:
-            self.relationship_profiles_dataset = relationship_profiles_file
 
-    def load_agent_profiles(self, local_path: str = None):
-        if local_path:
+    def load_agent_profiles(self, use_local: bool = False, local_path: str = None):
+        if not use_local:
+            # Load the dataset from Hugging Face
+            self.agent_profiles = load_dataset(self.hf_repo, data_files=self.agent_profiles_dataset)
+        else:
             # Load the dataset from local file
-            self.agent_profiles = list
+            if local_path is None:
+                raise ValueError("local_path must be provided to load local data")
             try:
                 with open(local_path, 'r') as f:
+                    self.agent_profiles = list
                     for line in f:
                         self.agent_profiles.append(json.loads(line.strip()))
             except FileNotFoundError:
                 print(f"File not found: {local_path}")
             except json.JSONDecodeError as e:
                 print(f"Error decoding JSON: {e}")
-        else:
-            # Load the dataset from Hugging Face
-            self.agent_profiles = load_dataset(self.database, data_files=self.agent_profiles_dataset)
 
-    def get_all_agent_profiles(self, local_path: str = None) -> list[BaseAgentProfile]:
+
+    def get_all_agent_profiles(self, use_local: bool = False, local_path: str = None) -> list[BaseAgentProfile]:
         if self.agent_profiles is None:
-            self.load_agent_profiles(local_path = local_path)
+            self.load_agent_profiles(use_local, local_path)
 
         profiles = []
         for record in self.agent_profiles:
@@ -83,25 +69,29 @@ class dataLoader:
 
         return profiles
     
-    def load_env_profiles(self, local_path: str = None):
-        if local_path:
+
+    def load_env_profiles(self, use_local: bool = False, local_path: str = None):
+        if not use_local:
+            # Load the dataset from Hugging Face
+            self.env_profiles = load_dataset(self.hf_repo, data_files=self.env_profiles_dataset)
+        else:
             # Load the dataset from local file
-            self.env_profiles = list
+            if local_path is None:
+                raise ValueError("local_path must be provided to load local data")
             try:
                 with open(local_path, 'r') as f:
+                    self.env_profiles = list
                     for line in f:
                         self.env_profiles.append(json.loads(line.strip()))
             except FileNotFoundError:
                 print(f"File not found: {local_path}")
             except json.JSONDecodeError as e:
-                print(f"Error decoding JSON: {e}")
-        else:
-            # Load the dataset from Hugging Face
-            self.env_profiles = load_dataset(self.database, data_files=self.env_profiles_dataset)
+                print(f"Error decoding JSON: {e}")            
 
-    def get_all_env_profiles(self, local_path: str = None) -> list[BaseEnvironmentProfile]:
+
+    def get_all_env_profiles(self, use_local: bool = False, local_path: str = None) -> list[BaseEnvironmentProfile]:
         if self.env_profiles is None:
-            self.load_env_profiles(local_path = local_path)
+            self.load_env_profiles(use_local, local_path)
 
         profiles = []
         for record in self.env_profiles:
@@ -122,26 +112,30 @@ class dataLoader:
 
         return profiles
     
+
     # NOTE: currently only support BaseRelationshipProfile as the same of the jsonl file on Hugging Face
-    def load_relationship_profiles(self, local_path: str = None):
-        if local_path:
+    def load_relationship_profiles(self, use_local: bool = False, local_path: str = None):
+        if not use_local:
+            # Load the dataset from Hugging Face
+            self.relationship_profiles = load_dataset(self.hf_repo, data_files=self.relationship_profiles_dataset)
+        else:
             # Load the dataset from local file
-            self.relationship_profiles = list
+            if local_path is None:
+                raise ValueError("local_path must be provided to load local data")
             try:
                 with open(local_path, 'r') as f:
+                    self.relationship_profiles = list
                     for line in f:
                         self.relationship_profiles.append(json.loads(line.strip()))
             except FileNotFoundError:
                 print(f"File not found: {local_path}")
             except json.JSONDecodeError as e:
-                print(f"Error decoding JSON: {e}")
-        else:
-            # Load the dataset from Hugging Face
-            self.relationship_profiles = load_dataset(self.database, data_files=self.relationship_profiles_dataset)
+                print(f"Error decoding JSON: {e}")            
 
-    def get_all_relationship_profiles(self, local_path: str = None) -> list[BaseRelationshipProfile]:
+
+    def get_all_relationship_profiles(self, use_local: bool = False, local_path: str = None) -> list[BaseRelationshipProfile]:
         if self.relationship_profiles is None:
-            self.load_relationship_profiles(local_path = local_path)
+            self.load_relationship_profiles(use_local, local_path)
 
         profiles = []
         for record in self.relationship_profiles:
@@ -163,7 +157,17 @@ class dataLoader:
 
         return profiles
     
-    def random_sample_agent_profiles(self, n: int):
-        all_profiles = self.get_all_agent_profiles()
+
+    def sample_agent_random(self, n: int, use_local: bool = False, local_path: str = None) -> list[BaseAgentProfile]:
+        all_profiles = self.get_all_agent_profiles(use_local, local_path);
         return random.sample(all_profiles, n) if n <= len(all_profiles) else all_profiles
     
+
+    def sample_env_random(self, n: int, use_local: bool = False, local_path: str = None) -> list[BaseAgentProfile]:
+        all_profiles = self.get_all_env_profiles(use_local, local_path);
+        return random.sample(all_profiles, n) if n <= len(all_profiles) else all_profiles
+    
+
+    def sample_relationship_random(self, n: int, use_local: bool = False, local_path: str = None) -> list[BaseAgentProfile]:
+        all_profiles = self.get_all_relationship_profiles(use_local, local_path);
+        return random.sample(all_profiles, n) if n <= len(all_profiles) else all_profiles
