@@ -65,6 +65,30 @@ class TinyChatServer:
         """Setup logging configuration"""
         setup_logging()
 
+    def _neighbor_map_ids_to_names(
+        self,
+        agent_configs: list[dict[str, Any]],
+        id_map: dict[int, list[int]] | None,
+    ) -> dict[str, list[str]] | None:
+        if not id_map:
+            return None
+
+        id_to_name: dict[int, str] = {}
+        for cfg in agent_configs:
+            sid = cfg.get('speaking_id')
+            if isinstance(sid, int):
+                id_to_name[sid] = cfg['name']
+
+        name_map: dict[str, list[str]] = {}
+        for sid, nbr_ids in id_map.items():
+            if sid not in id_to_name:
+                continue
+            src_name = id_to_name[sid]
+            nbr_names = [id_to_name[nid] for nid in nbr_ids if nid in id_to_name]
+            if nbr_names:
+                name_map[src_name] = nbr_names
+        return name_map or None
+
     async def run_conversation(
         self,
         agent_configs: list[dict[str, Any]],
@@ -76,6 +100,7 @@ class TinyChatServer:
         scenario: str | None = None,
         default_model: str | None = None,
         return_log: bool = False,
+        obs_control: dict[str, Any] | None = None,
     ) -> EpisodeLog | None:
         max_turns = max_turns or self.config.max_turns
         action_order = action_order or self.config.action_order
@@ -89,7 +114,12 @@ class TinyChatServer:
         evaluators, terminal_evaluators = self._create_evaluators(
             max_turns, enable_evaluation
         )
+        raw_id_neighbor_map = (obs_control or {}).get('neighbor_map')
 
+        neighbor_map_names = self._neighbor_map_ids_to_names(
+            agent_configs=agent_configs,
+            id_map=raw_id_neighbor_map,
+        )
         env = TinyChatEnvironment(
             evaluators=evaluators,
             terminal_evaluators=terminal_evaluators,
@@ -97,6 +127,9 @@ class TinyChatServer:
             speaking_order=speaking_order,
             max_turns=max_turns,
             available_action_types=set(self.config.available_action_types),
+            obs_mode=(obs_control or {}).get('mode', 'all'),
+            neighbor_map=neighbor_map_names,
+            local_k=(obs_control or {}).get('local_k', 5),
         )
 
         agents = await self._create_agents(
