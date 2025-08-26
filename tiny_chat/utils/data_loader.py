@@ -40,7 +40,7 @@ class DataLoader:
 
 
     def get_all_agent_profiles(self, use_local: bool = False, local_path: str = None) -> list[BaseAgentProfile]:
-        if self.agent_profiles is None:
+        if self.agent_profiles is None or use_local:
             self.load_agent_profiles(use_local, local_path)
 
         profiles = []
@@ -90,7 +90,7 @@ class DataLoader:
 
 
     def get_all_env_profiles(self, use_local: bool = False, local_path: str = None) -> list[BaseEnvironmentProfile]:
-        if self.env_profiles is None:
+        if self.env_profiles is None or use_local:
             self.load_env_profiles(use_local, local_path)
 
         profiles = []
@@ -134,7 +134,7 @@ class DataLoader:
 
 
     def get_all_relationship_profiles(self, use_local: bool = False, local_path: str = None) -> list[BaseRelationshipProfile]:
-        if self.relationship_profiles is None:
+        if self.relationship_profiles is None or use_local:
             self.load_relationship_profiles(use_local, local_path)
 
         profiles = []
