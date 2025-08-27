@@ -22,6 +22,7 @@ pettingzoo = "^1.24.0"
 litellm = "^1.75.0"
 json-repair = "^0.48.0"
 rich = "^14.1.0"
+datasets = "^4.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.6.0"
