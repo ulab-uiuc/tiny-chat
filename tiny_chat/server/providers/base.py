@@ -10,7 +10,6 @@ from tiny_chat.generator import (
     generate_action,
     generate_goal,
 )
-from tiny_chat.generator.output_parsers import PydanticOutputParser
 from tiny_chat.utils.logger import logger as log
 
 from ..config import ModelProviderConfig
@@ -50,6 +49,45 @@ class BaseModelProvider(ABC):
             structured_output=structured_output,
             **kwargs,
         )
+
+    def _prepare_model_config(
+        self, model_name: str
+    ) -> tuple[str | None, str | None, str]:
+        try:
+            from tiny_chat.generator import _prepare_provider_config
+
+            api_base, api_key, eff_model = _prepare_provider_config(model_name)
+        except Exception:
+            api_base, api_key, eff_model = (None, None, model_name)
+        return api_base, api_key, eff_model
+
+    def sync_generate_with_parser(
+        self,
+        prompt: str,
+        output_parser: Any,
+        temperature: float | None = None,
+    ) -> Any:
+        model_name = self._get_agenerate_model_name()
+        api_base, api_key, eff_model = self._prepare_model_config(model_name)
+
+        messages = [{'role': 'user', 'content': prompt}]
+        try:
+            resp = completion(
+                model=eff_model,
+                messages=messages,
+                temperature=temperature
+                if temperature is not None
+                else self.config.temperature,
+                drop_params=True,
+                base_url=api_base,
+                api_key=api_key,
+            )
+            text = resp.choices[0].message.content
+            assert isinstance(text, str)
+            return output_parser.parse(text)
+        except Exception as e:
+            log.debug(f'[red] sync_generate_with_parser failed: {e}')
+            raise
 
     async def agenerate_action(
         self,
@@ -145,59 +183,3 @@ class BaseModelProvider(ABC):
 
     def __repr__(self) -> str:
         return self.__str__()
-
-    def generate_evaluation(
-        self,
-        history: str,
-        evaluation_class: type,
-        temperature: float | None = None,
-    ) -> Any:
-        """
-        Synchronous LLM-judge generation.
-        This mirrors EpisodeLLMEvaluator.__acall__ but uses a blocking LiteLLM 'completion(...)'.
-        """
-        model_name = self._get_agenerate_model_name()
-
-        output_parser = PydanticOutputParser(pydantic_object=evaluation_class)
-        format_instructions = output_parser.get_format_instructions()
-
-        prompt = f"""{history}
-
-Based on previous interactions, evaluate how well participants achieve their goals.
-
-IMPORTANT: For each evaluation dimension, provide a tuple with exactly 2 elements:
-- First element: a single string containing all reasoning
-- Second element: a single integer score
-
-Example format for each dimension:
-"believability": ["The agent shows natural behavior and consistency", 8]
-
-Please follow the format:
-{format_instructions}
-"""
-
-        try:
-            from tiny_chat.generator import _prepare_provider_config  # type: ignore
-
-            api_base, api_key, eff_model = _prepare_provider_config(model_name)
-        except Exception:
-            api_base, api_key, eff_model = (None, None, model_name)
-
-        messages = [{'role': 'user', 'content': prompt}]
-        try:
-            resp = completion(
-                model=eff_model,
-                messages=messages,
-                temperature=temperature
-                if temperature is not None
-                else self.config.temperature,
-                drop_params=True,
-                base_url=api_base,
-                api_key=api_key,
-            )
-            text = resp.choices[0].message.content
-            assert isinstance(text, str)
-            return output_parser.parse(text)
-        except Exception as e:
-            log.debug(f'[red] generate_evaluation failed to parse: {e}')
-            raise

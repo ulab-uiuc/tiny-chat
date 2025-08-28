@@ -200,8 +200,7 @@ class TinyChatServer:
                 if term:
                     terminal_evaluators.append(term)
 
-            if not self.config.sync_mode:
-                evaluators.append(plugin)
+            evaluators.append(plugin)
 
         return evaluators, terminal_evaluators
 

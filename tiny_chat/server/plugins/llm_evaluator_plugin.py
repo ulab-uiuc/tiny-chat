@@ -63,14 +63,20 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
         self, turn_number: int, messages: list[tuple[str, Any]]
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         try:
-            converted_messages = self._convert_messages(messages)
+            converted_messages = []
+            for sender, msg in messages:
+                if hasattr(msg, 'to_natural_language'):
+                    converted_messages.append((sender, msg))
+                else:
+                    from ...messages import SimpleMessage
 
-            result = self._evaluate_sync(turn_number, converted_messages)
+                    converted_messages.append((sender, SimpleMessage(message=str(msg))))
 
-            logger.debug(f'LLM evaluator returned {len(result)} results')
+            result = self.evaluator(turn_number, converted_messages)
+
             return result
         except Exception as e:
-            logger.error(f'LLM evaluation failed: {e}')
+            logger.error(f'LLM evaluation failed: {e}', exc_info=True)
             return []
 
     async def __acall__(

@@ -117,14 +117,56 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
         self.prompt = ''
         self.response_format_class = response_format_class or SotopiaDimensions  # type: ignore
 
+    def _build_evaluation_prompt(self, history: str) -> str:
+        from tiny_chat.generator.output_parsers import PydanticOutputParser
+
+        EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]
+        output_parser = PydanticOutputParser(pydantic_object=EvaluationClass)
+        format_instructions = output_parser.get_format_instructions()
+
+        return f"""{history}
+
+    Based on previous interactions, evaluate how well participants achieve their goals.
+
+    IMPORTANT: For each evaluation dimension, provide a tuple with exactly 2 elements:
+    - First element: a single string containing all reasoning
+    - Second element: a single integer score
+
+    Example format for each dimension:
+    "believability": ["The agent shows natural behavior and consistency", 8]
+
+    Please follow the format:
+    {format_instructions}
+    """
+
+    def _process_evaluation_response(
+        self, response: any, agent_names: list[str]
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
+        response_list: list[tuple[str, tuple[tuple[str, int | float | bool], str]]] = []
+
+        for agent_name in agent_names:
+            if (
+                hasattr(response, 'agent_evaluations')
+                and agent_name in response.agent_evaluations
+            ):
+                agent_eval = response.agent_evaluations[agent_name]
+                eval_dict = (
+                    agent_eval.dict()
+                    if hasattr(agent_eval, 'dict')
+                    else agent_eval.__dict__
+                )
+                for dimension, value in eval_dict.items():
+                    if isinstance(value, tuple) and len(value) >= 2:
+                        reasoning, score = value[0], value[1]
+                    else:
+                        score = value
+                        reasoning = f'Score for {dimension}'
+                    response_list.append((agent_name, ((dimension, score), reasoning)))
+        return response_list
+
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
-        """
-        Synchronous evaluation entry.
-        Build the same 'history' text as in __acall__, then call provider.generate_evaluation(...)
-        and return a list of (agent_name, ((dimension, score), reasoning)) tuples.
-        """
         history_parts: list[str] = []
         for sender, msg in messages:
             if 'did nothing' in msg.to_natural_language():
@@ -137,50 +179,26 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
 
         if not history:
             return []
-
         agent_names: list[str] = []
         for sender, _ in messages:
             if sender != 'Environment' and sender not in agent_names:
                 agent_names.append(sender)
-
         EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]
 
         try:
-            if hasattr(self._model_provider, 'generate_evaluation'):
-                response = self._model_provider.generate_evaluation(
-                    history=history,
-                    evaluation_class=EvaluationClass,
-                    temperature=0.0,
-                )
-            else:
-                raise RuntimeError(
-                    'Model provider does not implement generate_evaluation().'
-                )
+            prompt = self._build_evaluation_prompt(history)
 
-            response_list: list[
-                tuple[str, tuple[tuple[str, int | float | bool], str]]
-            ] = []
+            from tiny_chat.generator.output_parsers import PydanticOutputParser
 
-            for agent_name in agent_names:
-                if (
-                    hasattr(response, 'agent_evaluations')
-                    and agent_name in response.agent_evaluations
-                ):
-                    agent_eval = response.agent_evaluations[agent_name]
-                    eval_dict = (
-                        agent_eval.dict()
-                        if hasattr(agent_eval, 'dict')
-                        else agent_eval.__dict__
-                    )
-                    for dimension, value in eval_dict.items():
-                        if isinstance(value, tuple) and len(value) >= 2:
-                            reasoning, score = value[0], value[1]
-                        else:
-                            score = value
-                            reasoning = f'Score for {dimension}'
-                        response_list.append(
-                            (agent_name, ((dimension, score), reasoning))
-                        )
+            output_parser = PydanticOutputParser(pydantic_object=EvaluationClass)
+
+            response = self._model_provider.sync_generate_with_parser(
+                prompt=prompt,
+                output_parser=output_parser,
+                temperature=0.0,
+            )
+
+            response_list = self._process_evaluation_response(response, agent_names)
             return response_list
 
         except Exception as e:
@@ -218,16 +236,17 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
             return []
 
         try:
-            from tiny_chat.generator import agenerate
-            from tiny_chat.generator.output_parsers import PydanticOutputParser
-
             agent_names = []
             if messages:
                 for sender, _ in messages:
                     if sender != 'Environment' and sender not in agent_names:
                         agent_names.append(sender)
+            prompt = self._build_evaluation_prompt(history)
+
+            from tiny_chat.generator.output_parsers import PydanticOutputParser
 
             EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]
+            output_parser = PydanticOutputParser(pydantic_object=EvaluationClass)
 
             if hasattr(self._model_provider, 'agenerate_evaluation'):
                 response = await self._model_provider.agenerate_evaluation(
@@ -236,64 +255,20 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
                     temperature=temperature,
                 )
             else:
+                from tiny_chat.generator import agenerate
+
                 effective_model_name = self._model_provider._get_agenerate_model_name()
                 response = await agenerate(
                     model_name=effective_model_name,
-                    template="""{history}
-
-Based on previous interactions, evaluate how well participants achieve their goals.
-
-IMPORTANT: For each evaluation dimension, provide a tuple with exactly 2 elements:
-- First element: a single string containing all reasoning
-- Second element: a single integer score
-
-Example format for each dimension:
-"believability": ["The agent shows natural behavior and consistency", 8]
-
-Please follow the format:
-{format_instructions}
-""",
+                    template=prompt,
                     input_values={'history': history},
-                    output_parser=PydanticOutputParser(pydantic_object=EvaluationClass),
+                    output_parser=output_parser,
                     temperature=temperature,
                 )
 
-            response_list: list[
-                tuple[str, tuple[tuple[str, int | float | bool], str]]
-            ] = []
-
-            for agent_name in agent_names:
-                if agent_name in response.agent_evaluations:
-                    agent_eval = response.agent_evaluations[agent_name]
-                    eval_dict = (
-                        agent_eval.dict()
-                        if hasattr(agent_eval, 'dict')
-                        else agent_eval.__dict__
-                    )
-
-                    for dimension, value in eval_dict.items():
-                        if isinstance(value, tuple) and len(value) >= 2:
-                            score = value[1]
-                            reasoning = value[0]
-                        else:
-                            score = value
-                            reasoning = f'Score for {dimension}'
-
-                        response_list.append(
-                            (
-                                agent_name,
-                                (
-                                    (dimension, score),
-                                    reasoning,
-                                ),
-                            )
-                        )
-
-            log.debug(f'Generated evaluation for {len(agent_names)} agents')
-            return response_list
+            return self._process_evaluation_response(response, agent_names)
 
         except Exception as e:
-            print(e)
             log.debug(f'[red] Failed to generate environment response. {e}')
             return []
 
