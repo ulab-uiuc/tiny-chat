@@ -9,20 +9,26 @@ from tiny_chat.profiles.relationship_profile import BaseRelationshipProfile, Rel
 class DataLoader:
     """a class to load data from hugging face"""
 
-    def __init__(self, use_official: bool = True):
-        if use_official:
-            self.hf_repo = "skyyyyks/tiny-chat"
-            self.agent_profiles_dataset = "agent_profiles.jsonl"
-            self.env_profiles_dataset = "environment_profiles.jsonl"
-            self.relationship_profiles_dataset = "relationship_profiles.jsonl"
+    def __init__(self):
+        self.hf_set = False
         self.agent_profiles = None
         self.env_profiles = None
         self.relationship_profiles = None
 
 
+    def set_official_hf(self):
+        if not self.hf_set:
+            self.hf_repo = "skyyyyks/tiny-chat"
+            self.agent_profiles_dataset = "agent_profiles.jsonl"
+            self.env_profiles_dataset = "environment_profiles.jsonl"
+            self.relationship_profiles_dataset = "relationship_profiles.jsonl"
+            self.hf_set = True
+
+
     def load_agent_profiles(self, use_local: bool = False, local_path: str = None):
         if not use_local:
             # Load the dataset from Hugging Face
+            self.set_official_hf()
             self.agent_profiles = load_dataset(self.hf_repo, data_files=self.agent_profiles_dataset)
         else:
             # Load the dataset from local file
@@ -73,6 +79,7 @@ class DataLoader:
     def load_env_profiles(self, use_local: bool = False, local_path: str = None):
         if not use_local:
             # Load the dataset from Hugging Face
+            self.set_official_hf()
             self.env_profiles = load_dataset(self.hf_repo, data_files=self.env_profiles_dataset)
         else:
             # Load the dataset from local file
@@ -117,6 +124,7 @@ class DataLoader:
     def load_relationship_profiles(self, use_local: bool = False, local_path: str = None):
         if not use_local:
             # Load the dataset from Hugging Face
+            self.set_official_hf()
             self.relationship_profiles = load_dataset(self.hf_repo, data_files=self.relationship_profiles_dataset)
         else:
             # Load the dataset from local file
@@ -130,7 +138,7 @@ class DataLoader:
             except FileNotFoundError:
                 print(f"File not found: {local_path}")
             except json.JSONDecodeError as e:
-                print(f"Error decoding JSON: {e}")            
+                print(f"Error decoding JSON: {e}")
 
 
     def get_all_relationship_profiles(self, use_local: bool = False, local_path: str = None) -> list[BaseRelationshipProfile]:
