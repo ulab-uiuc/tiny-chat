@@ -120,9 +120,72 @@ class EpisodeLLMEvaluator(Evaluator, Generic[T_eval_dim]):
     def __call__(
         self, turn_number: int, messages: list[tuple[str, Message]]
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
-        raise NotImplementedError(
-            'EpisodeLLMEvaluator is not implemented for synchronous evaluation'
-        )
+        """
+        Synchronous evaluation entry.
+        Build the same 'history' text as in __acall__, then call provider.generate_evaluation(...)
+        and return a list of (agent_name, ((dimension, score), reasoning)) tuples.
+        """
+        history_parts: list[str] = []
+        for sender, msg in messages:
+            if 'did nothing' in msg.to_natural_language():
+                continue
+            if sender == 'Environment':
+                history_parts.append(msg.to_natural_language())
+            else:
+                history_parts.append(f'{sender} {msg.to_natural_language()}')
+        history = '\n'.join(history_parts).strip()
+
+        if not history:
+            return []
+
+        agent_names: list[str] = []
+        for sender, _ in messages:
+            if sender != 'Environment' and sender not in agent_names:
+                agent_names.append(sender)
+
+        EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]
+
+        try:
+            if hasattr(self._model_provider, 'generate_evaluation'):
+                response = self._model_provider.generate_evaluation(
+                    history=history,
+                    evaluation_class=EvaluationClass,
+                    temperature=0.0,
+                )
+            else:
+                raise RuntimeError(
+                    'Model provider does not implement generate_evaluation().'
+                )
+
+            response_list: list[
+                tuple[str, tuple[tuple[str, int | float | bool], str]]
+            ] = []
+
+            for agent_name in agent_names:
+                if (
+                    hasattr(response, 'agent_evaluations')
+                    and agent_name in response.agent_evaluations
+                ):
+                    agent_eval = response.agent_evaluations[agent_name]
+                    eval_dict = (
+                        agent_eval.dict()
+                        if hasattr(agent_eval, 'dict')
+                        else agent_eval.__dict__
+                    )
+                    for dimension, value in eval_dict.items():
+                        if isinstance(value, tuple) and len(value) >= 2:
+                            reasoning, score = value[0], value[1]
+                        else:
+                            score = value
+                            reasoning = f'Score for {dimension}'
+                        response_list.append(
+                            (agent_name, ((dimension, score), reasoning))
+                        )
+            return response_list
+
+        except Exception as e:
+            log.debug(f'[red] Sync LLM evaluation failed: {e}')
+            return []
 
     @validate_call
     async def __acall__(

@@ -58,3 +58,22 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
     def get_terminal_evaluator(self) -> EpisodeLLMEvaluator[SotopiaDimensions]:
         """Return the underlying evaluator for terminal evaluation"""
         return self.evaluator
+
+    def __call__(
+        self, turn_number: int, messages: list[tuple[str, Any]]
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
+        try:
+            converted_messages = self._convert_messages(messages)
+
+            result = self._evaluate_sync(turn_number, converted_messages)
+
+            logger.debug(f'LLM evaluator returned {len(result)} results')
+            return result
+        except Exception as e:
+            logger.error(f'LLM evaluation failed: {e}')
+            return []
+
+    async def __acall__(
+        self, turn_number: int, messages: list[tuple[str, Any]]
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
+        return await self.evaluate(turn_number, messages)

@@ -191,17 +191,17 @@ class TinyChatServer:
         evaluators = [RuleBasedTerminatedEvaluator(max_turn_number=max_turns)]
         terminal_evaluators = []
 
-        if self.config.sync_mode:
-            return evaluators, []
+        if not enable_evaluation:
+            return evaluators, terminal_evaluators
 
-        if enable_evaluation:
-            for plugin in self.plugin_manager.get_evaluators():
-                if hasattr(plugin, 'get_terminal_evaluator'):
-                    terminal_eval = plugin.get_terminal_evaluator()
-                    if terminal_eval:
-                        terminal_evaluators.append(terminal_eval)
-                else:
-                    evaluators.append(plugin)
+        for plugin in self.plugin_manager.get_evaluators():
+            if hasattr(plugin, 'get_terminal_evaluator'):
+                term = plugin.get_terminal_evaluator()
+                if term:
+                    terminal_evaluators.append(term)
+
+            if not self.config.sync_mode:
+                evaluators.append(plugin)
 
         return evaluators, terminal_evaluators
 

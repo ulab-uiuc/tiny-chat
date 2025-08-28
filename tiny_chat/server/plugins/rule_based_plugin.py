@@ -48,3 +48,32 @@ class RuleBasedPlugin(EvaluatorPlugin):
         except Exception as e:
             logger.error(f'Rule-based evaluation failed: {e}')
             return []
+
+    async def __acall__(
+        self, turn_number: int, messages: list[tuple[str, Any]]
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
+        return await self.evaluate(turn_number, messages)
+
+    def __call__(
+        self, turn_number: int, messages: list[tuple[str, Any]]
+    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
+        try:
+            converted_messages = []
+            for sender, msg in messages:
+                if hasattr(msg, 'to_natural_language'):
+                    converted_messages.append((sender, msg))
+                else:
+                    from ...messages import SimpleMessage
+
+                    converted_messages.append((sender, SimpleMessage(message=str(msg))))
+
+            result = self.evaluator(
+                turn_number=turn_number, messages=converted_messages
+            )
+
+            logger.debug(f'Rule-based evaluator returned {len(result)} results')
+            return result
+
+        except Exception as e:
+            logger.error(f'Rule-based evaluation failed: {e}')
+            return []
