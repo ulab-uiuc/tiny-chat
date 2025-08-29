@@ -3,7 +3,6 @@ from typing import Any, Generator, Type, TypeVar
 from ..data_loader import DataLoader
 from tiny_chat.agents import BaseAgent
 from tiny_chat.envs import TinyChatEnvironment
-from tiny_chat.profiles import BaseAgentProfile, BaseEnvironmentProfile
 from .base_sampler import BaseSampler, EnvAgentCombo
 
 ObsType = TypeVar("ObsType")
