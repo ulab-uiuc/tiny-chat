@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from litellm import completion
+
 from tiny_chat.generator import (
     agenerate,
     agenerate_action,
@@ -8,6 +10,7 @@ from tiny_chat.generator import (
     generate_action,
     generate_goal,
 )
+from tiny_chat.utils.logger import logger as log
 
 from ..config import ModelProviderConfig
 
@@ -46,6 +49,45 @@ class BaseModelProvider(ABC):
             structured_output=structured_output,
             **kwargs,
         )
+
+    def _prepare_model_config(
+        self, model_name: str
+    ) -> tuple[str | None, str | None, str]:
+        try:
+            from tiny_chat.generator import _prepare_provider_config
+
+            api_base, api_key, eff_model = _prepare_provider_config(model_name)
+        except Exception:
+            api_base, api_key, eff_model = (None, None, model_name)
+        return api_base, api_key, eff_model
+
+    def sync_generate_with_parser(
+        self,
+        prompt: str,
+        output_parser: Any,
+        temperature: float | None = None,
+    ) -> Any:
+        model_name = self._get_agenerate_model_name()
+        api_base, api_key, eff_model = self._prepare_model_config(model_name)
+
+        messages = [{'role': 'user', 'content': prompt}]
+        try:
+            resp = completion(
+                model=eff_model,
+                messages=messages,
+                temperature=temperature
+                if temperature is not None
+                else self.config.temperature,
+                drop_params=True,
+                base_url=api_base,
+                api_key=api_key,
+            )
+            text = resp.choices[0].message.content
+            assert isinstance(text, str)
+            return output_parser.parse(text)
+        except Exception as e:
+            log.debug(f'[red] sync_generate_with_parser failed: {e}')
+            raise
 
     async def agenerate_action(
         self,

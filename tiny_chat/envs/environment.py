@@ -523,37 +523,43 @@ class TinyChatEnvironment(BaseChatEnivronment):
         if not self.evaluators:
             return None
 
-        response = unweighted_aggregate_evaluate(
-            list(
-                itertools.chain(
-                    *await asyncio.gather(
-                        *[
-                            evaluator.__acall__(
-                                turn_number=self.turn_number,
-                                messages=self.inbox,
-                            )
-                            for evaluator in self.evaluators
-                        ]
-                    )
+        evaluator_results = []
+        for evaluator in self.evaluators:
+            if hasattr(evaluator, '__acall__'):
+                result = await evaluator.__acall__(
+                    turn_number=self.turn_number,
+                    messages=self.inbox,
                 )
-            )
+                evaluator_results.append(result)
+            else:
+                result = evaluator(
+                    turn_number=self.turn_number,
+                    messages=self.inbox,
+                )
+                evaluator_results.append(result)
+
+        response = unweighted_aggregate_evaluate(
+            list(itertools.chain(*evaluator_results))
         )
 
         if response and response.terminated and self.terminal_evaluators:
-            terminal_response = unweighted_aggregate_evaluate(
-                list(
-                    itertools.chain(
-                        *await asyncio.gather(
-                            *[
-                                evaluator.__acall__(
-                                    turn_number=self.turn_number,
-                                    messages=self.inbox,
-                                )
-                                for evaluator in self.terminal_evaluators
-                            ]
-                        )
+            terminal_results = []
+            for evaluator in self.terminal_evaluators:
+                if hasattr(evaluator, '__acall__'):
+                    result = await evaluator.__acall__(
+                        turn_number=self.turn_number,
+                        messages=self.inbox,
                     )
-                )
+                    terminal_results.append(result)
+                else:
+                    result = evaluator(
+                        turn_number=self.turn_number,
+                        messages=self.inbox,
+                    )
+                    terminal_results.append(result)
+
+            terminal_response = unweighted_aggregate_evaluate(
+                list(itertools.chain(*terminal_results))
             )
             self._merge_terminal_response(response, terminal_response)
 
