@@ -195,12 +195,20 @@ class TinyChatServer:
             return evaluators, terminal_evaluators
 
         for plugin in self.plugin_manager.get_evaluators():
-            if hasattr(plugin, 'get_terminal_evaluator'):
-                term = plugin.get_terminal_evaluator()
-                if term:
-                    terminal_evaluators.append(term)
+            plugin_type = plugin.plugin_type
 
-            evaluators.append(plugin)
+            if plugin_type == 'rule_based':
+                # Rule-based evaluators run during conversation to check termination conditions
+                evaluators.append(plugin)
+            elif plugin_type == 'llm':
+                # LLM evaluators run only at the end to assess conversation quality
+                if hasattr(plugin, 'get_terminal_evaluator'):
+                    term = plugin.get_terminal_evaluator()
+                    if term:
+                        terminal_evaluators.append(term)
+            else:
+                # For other plugin types, add to evaluators by default
+                evaluators.append(plugin)
 
         return evaluators, terminal_evaluators
 

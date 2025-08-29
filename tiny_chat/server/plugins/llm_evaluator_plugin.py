@@ -1,8 +1,9 @@
 import logging
 from typing import Any
 
-from ...evaluator import EpisodeLLMEvaluator, SotopiaDimensions
-from ..providers import BaseModelProvider
+from tiny_chat.evaluator import EpisodeLLMEvaluator, SotopiaDimensions
+from tiny_chat.server.providers import BaseModelProvider
+
 from .base import EvaluatorPlugin
 
 logger = logging.getLogger(__name__)
@@ -13,73 +14,21 @@ class LLMEvaluatorPlugin(EvaluatorPlugin):
 
     def __init__(self, config: dict[str, Any]):
         super().__init__(config)
-
         self.model_provider: BaseModelProvider | None = config.get('model_provider')
         self.dimensions = config.get('dimensions', 'sotopia')
-
-        if self.dimensions == 'sotopia':
-            self.evaluator = EpisodeLLMEvaluator[SotopiaDimensions](
-                model_provider=self.model_provider
-            )
-        else:
-            self.evaluator = EpisodeLLMEvaluator[SotopiaDimensions](
-                model_provider=self.model_provider
-            )
 
     @property
     def plugin_type(self) -> str:
         return 'llm'
 
-    async def evaluate(
-        self, turn_number: int, messages: list[tuple[str, Any]]
-    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
-        """Evaluate conversation turn using LLM"""
-        try:
-            converted_messages = []
-            for sender, msg in messages:
-                if hasattr(msg, 'to_natural_language'):
-                    converted_messages.append((sender, msg))
-                else:
-                    from ...messages import SimpleMessage
-
-                    converted_messages.append((sender, SimpleMessage(message=str(msg))))
-
-            result = await self.evaluator.__acall__(
-                turn_number=turn_number, messages=converted_messages
+    def _create_evaluator(self) -> EpisodeLLMEvaluator[SotopiaDimensions]:
+        """Create the underlying LLM evaluator"""
+        if self.dimensions == 'sotopia':
+            return EpisodeLLMEvaluator[SotopiaDimensions](
+                model_provider=self.model_provider
             )
-
-            logger.debug(f'LLM evaluator returned {len(result)} results')
-            return result
-
-        except Exception as e:
-            logger.error(f'LLM evaluation failed: {e}')
-            return []
-
-    def get_terminal_evaluator(self) -> EpisodeLLMEvaluator[SotopiaDimensions]:
-        """Return the underlying evaluator for terminal evaluation"""
-        return self.evaluator
-
-    def __call__(
-        self, turn_number: int, messages: list[tuple[str, Any]]
-    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
-        try:
-            converted_messages = []
-            for sender, msg in messages:
-                if hasattr(msg, 'to_natural_language'):
-                    converted_messages.append((sender, msg))
-                else:
-                    from ...messages import SimpleMessage
-
-                    converted_messages.append((sender, SimpleMessage(message=str(msg))))
-
-            result = self.evaluator(turn_number, converted_messages)
-
-            return result
-        except Exception as e:
-            logger.error(f'LLM evaluation failed: {e}', exc_info=True)
-            return []
-
-    async def __acall__(
-        self, turn_number: int, messages: list[tuple[str, Any]]
-    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
-        return await self.evaluate(turn_number, messages)
+        else:
+            # For now, default to SotopiaDimensions
+            return EpisodeLLMEvaluator[SotopiaDimensions](
+                model_provider=self.model_provider
+            )

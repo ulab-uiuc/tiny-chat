@@ -1,7 +1,8 @@
 import logging
 from typing import Any
 
-from ...evaluator import RuleBasedTerminatedEvaluator
+from tiny_chat.evaluator import RuleBasedTerminatedEvaluator
+
 from .base import EvaluatorPlugin
 
 logger = logging.getLogger(__name__)
@@ -12,68 +13,15 @@ class RuleBasedPlugin(EvaluatorPlugin):
 
     def __init__(self, config: dict[str, Any]):
         super().__init__(config)
-
         self.max_turn_number = config.get('max_turn_number', 20)
         self.max_stale_turn = config.get('max_stale_turn', 2)
-
-        self.evaluator = RuleBasedTerminatedEvaluator(
-            max_turn_number=self.max_turn_number, max_stale_turn=self.max_stale_turn
-        )
 
     @property
     def plugin_type(self) -> str:
         return 'rule_based'
 
-    async def evaluate(
-        self, turn_number: int, messages: list[tuple[str, Any]]
-    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
-        """Evaluate conversation turn using rules"""
-        try:
-            converted_messages = []
-            for sender, msg in messages:
-                if hasattr(msg, 'to_natural_language'):
-                    converted_messages.append((sender, msg))
-                else:
-                    from ...messages import SimpleMessage
-
-                    converted_messages.append((sender, SimpleMessage(message=str(msg))))
-
-            result = await self.evaluator.__acall__(
-                turn_number=turn_number, messages=converted_messages
-            )
-
-            logger.debug(f'Rule-based evaluator returned {len(result)} results')
-            return result
-
-        except Exception as e:
-            logger.error(f'Rule-based evaluation failed: {e}')
-            return []
-
-    async def __acall__(
-        self, turn_number: int, messages: list[tuple[str, Any]]
-    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
-        return await self.evaluate(turn_number, messages)
-
-    def __call__(
-        self, turn_number: int, messages: list[tuple[str, Any]]
-    ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
-        try:
-            converted_messages = []
-            for sender, msg in messages:
-                if hasattr(msg, 'to_natural_language'):
-                    converted_messages.append((sender, msg))
-                else:
-                    from ...messages import SimpleMessage
-
-                    converted_messages.append((sender, SimpleMessage(message=str(msg))))
-
-            result = self.evaluator(
-                turn_number=turn_number, messages=converted_messages
-            )
-
-            logger.debug(f'Rule-based evaluator returned {len(result)} results')
-            return result
-
-        except Exception as e:
-            logger.error(f'Rule-based evaluation failed: {e}')
-            return []
+    def _create_evaluator(self) -> RuleBasedTerminatedEvaluator:
+        """Create the underlying rule-based evaluator"""
+        return RuleBasedTerminatedEvaluator(
+            max_turn_number=self.max_turn_number, max_stale_turn=self.max_stale_turn
+        )
