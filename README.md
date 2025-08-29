@@ -162,18 +162,3 @@ class CustomEvaluatorPlugin(EvaluatorPlugin):
 manager = PluginManager()
 manager.register_plugin('custom', CustomEvaluatorPlugin)
 ```
-
-### Docker Deployment
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-EXPOSE 8000
-
-CMD ["python", "-m", "tiny_chat.server.cli", "serve"]
-```
