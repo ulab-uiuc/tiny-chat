@@ -165,17 +165,17 @@ class DataLoader:
 
         return profiles
     
-
+    
     def sample_agent_random(self, n: int, use_local: bool = False, local_path: str = None) -> list[BaseAgentProfile]:
-        all_profiles = self.get_all_agent_profiles(use_local, local_path);
+        all_profiles = self.get_all_agent_profiles(use_local, local_path)
         return random.sample(all_profiles, n) if n <= len(all_profiles) else all_profiles
     
 
-    def sample_env_random(self, n: int, use_local: bool = False, local_path: str = None) -> list[BaseAgentProfile]:
-        all_profiles = self.get_all_env_profiles(use_local, local_path);
+    def sample_env_random(self, n: int, use_local: bool = False, local_path: str = None) -> list[BaseEnvironmentProfile]:
+        all_profiles = self.get_all_env_profiles(use_local, local_path)
         return random.sample(all_profiles, n) if n <= len(all_profiles) else all_profiles
     
 
-    def sample_relationship_random(self, n: int, use_local: bool = False, local_path: str = None) -> list[BaseAgentProfile]:
-        all_profiles = self.get_all_relationship_profiles(use_local, local_path);
+    def sample_relationship_random(self, n: int, use_local: bool = False, local_path: str = None) -> list[BaseRelationshipProfile]:
+        all_profiles = self.get_all_relationship_profiles(use_local, local_path)
         return random.sample(all_profiles, n) if n <= len(all_profiles) else all_profiles
