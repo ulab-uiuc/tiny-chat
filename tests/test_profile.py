@@ -1,12 +1,13 @@
 from tiny_chat.profiles import BaseAgentProfile, BaseEnvironmentProfile
 
 
-def test_agent_profile():
+def test_agent_profile() -> None:
     profile = BaseAgentProfile(
         first_name='John',
         last_name='Doe',
         age=25,
         occupation='Software Engineer',
+        speaking_id=0,
     )
 
     profile.add_field('mbti', 'intj')
@@ -15,7 +16,7 @@ def test_agent_profile():
     print(xml_profile)
 
 
-def test_environment_profile():
+def test_environment_profile() -> None:
     profile = BaseEnvironmentProfile(scenario='Three agents are eating dinner')
     print(profile)
 

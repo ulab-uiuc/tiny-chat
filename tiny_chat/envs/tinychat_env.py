@@ -1,12 +1,11 @@
 import asyncio
 import itertools
 import random
-from abc import ABC, abstractmethod
 from typing import Any, Literal, TypeVar
 
 from pydantic import validate_call
 
-from tiny_chat.evaluator import Evaluator, unweighted_aggregate_evaluate
+from tiny_chat.evaluator import BaseEvaluator, unweighted_aggregate_evaluate
 from tiny_chat.messages import (
     ActionType,
     AgentAction,
@@ -16,6 +15,8 @@ from tiny_chat.messages import (
     SimpleMessage,
     TinyChatBackground,
 )
+
+from .base import BaseChatEnivronment
 
 TBackground = TypeVar('TBackground', bound=ScriptBackground)
 
@@ -38,36 +39,6 @@ def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
     return action_str
 
 
-class BaseChatEnivronment(ABC):
-    @abstractmethod
-    def reset(self, **kwargs: Any) -> Any:
-        pass
-
-    @abstractmethod
-    def step(
-        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
-    ) -> Any:
-        pass
-
-    @abstractmethod
-    def astep(
-        self, actions: dict[str, AgentAction] | dict[str, dict[str, int | str]]
-    ) -> Any:
-        pass
-
-    @abstractmethod
-    def get_observation(self, agent_name: str) -> Observation:
-        pass
-
-    @abstractmethod
-    def is_terminated(self) -> bool:
-        pass
-
-    @abstractmethod
-    def get_turn_number(self) -> int:
-        pass
-
-
 class TinyChatEnvironment(BaseChatEnivronment):
     def __init__(
         self,
@@ -75,9 +46,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
         action_order: Literal[
             'simultaneous', 'round-robin', 'sequential', 'random', 'agent_id_based'
         ] = 'simultaneous',
-        evaluators: list[Evaluator] | None = None,
+        evaluators: list[BaseEvaluator] | None = None,
         model_name: str = 'gpt-4o-mini',
-        terminal_evaluators: list[Evaluator] | None = None,
+        terminal_evaluators: list[BaseEvaluator] | None = None,
         max_turns: int = 20,
         speaking_order: list[int] | None = None,
         obs_mode: Literal['all', 'local'] = 'all',
@@ -188,19 +159,23 @@ class TinyChatEnvironment(BaseChatEnivronment):
         agent_items = list(agents.items())
 
         temp_id_counter = len(self.speaking_order)
-        for agent_name, agent in agent_items:
+        for _agent_name, agent in agent_items:
             if not hasattr(agent, 'speaking_id'):
                 agent.speaking_id = temp_id_counter
                 temp_id_counter += 1
 
-        def get_speaking_order(item):
+        def get_speaking_order(item: tuple[str, Any]) -> int:
             agent_name, agent = item
             if hasattr(agent, 'speaking_id'):
                 agent_id = agent.speaking_id
                 try:
-                    return self.speaking_order.index(agent_id)
+                    return (
+                        self.speaking_order.index(agent_id)
+                        if self.speaking_order
+                        else 0
+                    )
                 except ValueError:
-                    return len(self.speaking_order)
+                    return len(self.speaking_order) if self.speaking_order else 0
             return len(self.speaking_order)
 
         agent_items.sort(key=get_speaking_order)
@@ -228,7 +203,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
             if hasattr(agent, 'speaking_id'):
                 agent_id = agent.speaking_id
             else:
-                agent_id = len(self.speaking_order) if self.speaking_order else 0
+                agent_id = (
+                    len(self.speaking_order) if self.speaking_order is not None else 0
+                )
 
             if not lite:
                 if hasattr(agent, 'profile'):
@@ -461,16 +438,21 @@ class TinyChatEnvironment(BaseChatEnivronment):
         observations = {}
         for i, agent_name in enumerate(self.agent_names):
             observations[agent_name] = Observation(
-                last_turn=self._last_turn_text_for(agent_name)
-                if self.turn_number > 0
-                else (
-                    (self.env_background or self.background)
-                    .create_agent_specific_background(  # type: ignore
-                        agent_name, omniscient=False
+                last_turn=(
+                    self._last_turn_text_for(agent_name)
+                    if self.turn_number > 0
+                    else (
+                        (self.env_background or self.background)
+                        .create_agent_specific_background(  # type: ignore
+                            agent_name, omniscient=False
+                        )
+                        .to_natural_language()
+                        if not self._omniscient
+                        and (self.env_background or self.background)
+                        else (
+                            self.env_background or self.background
+                        ).to_natural_language()  # type: ignore
                     )
-                    .to_natural_language()
-                    if not self._omniscient and (self.env_background or self.background)
-                    else (self.env_background or self.background).to_natural_language()  # type: ignore
                 ),
                 turn_number=self.turn_number,
                 available_actions=(

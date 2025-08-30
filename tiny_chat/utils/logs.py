@@ -54,7 +54,9 @@ class BaseEpisodeLog(BaseModel):
 
     def render_for_humans(self) -> tuple[list[BaseAgentProfile], list[str]]:
         agent_profiles = [
-            BaseAgentProfile(pk=uuid_str, first_name=uuid_str, last_name='')
+            BaseAgentProfile(
+                pk=uuid_str, first_name=uuid_str, last_name='', speaking_id=0
+            )
             for uuid_str in self.agents
         ]
         messages_and_rewards = []
