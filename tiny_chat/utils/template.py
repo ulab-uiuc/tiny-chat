@@ -97,6 +97,57 @@ e.g, replace name, he, she, him, her, his, and hers with you, your, and yours.
     'GOAL': """Please generate your goal based on the background:
     {background}
     """,
+    'AGENT_PROFILE': """Please generate a complete agent profile based on the provided information.
+
+{provided_info}
+
+IMPORTANT FORMAT REQUIREMENTS:
+- big_five: Must be a descriptive TEXT STRING (not JSON object), e.g., "High openness (creative, curious), moderate conscientiousness..."
+- moral_values: Array of strings like ["honesty", "fairness", "compassion"]
+- All text fields should be strings, not objects
+
+Create a realistic and detailed character profile. Fill in all missing fields with appropriate values.
+
+{format_instructions}""",
+    'ENV_PROFILE_CREATOR': """Please generate a complete environment profile based on the provided information.
+
+{provided_info}
+
+Create a realistic scenario for agent interaction with specific goals that may initially conflict.
+
+IMPORTANT: Return ONLY the JSON data object, do not include any schema definitions or explanations.
+
+Required fields:
+- scenario: Concrete description of the interaction setting
+- agent_goals: Array of specific goals for each agent
+- relationship: Integer (0=stranger, 1=know_by_name, 2=acquaintance, 3=friend, 4=romantic, 5=family)
+- codename: Short identifier for the environment
+- source: Source of the environment (e.g., "user_created")
+
+{format_instructions}""",
+    'RELATIONSHIP_PROFILE_CREATOR': """Please generate a complete relationship profile based on the provided information.
+
+{provided_info}
+
+Create a realistic relationship description between agents.
+
+Return ONLY a valid JSON object with these exact fields:
+- pk: leave empty string ""
+- agent_ids: array of agent ID strings
+- default_relationship: integer value (0=stranger, 1=know_by_name, 2=acquaintance, 3=friend, 4=romantic_relationship, 5=family_member)
+- scenario_context: string describing the relationship context
+- tag: string tag for categorization (can be empty)
+
+Example:
+{
+  "pk": "",
+  "agent_ids": ["agent_001", "agent_002"],
+  "default_relationship": 2,
+  "scenario_context": "Two colleagues working together",
+  "tag": "workplace"
+}
+
+JSON:""",
 }
 
 
