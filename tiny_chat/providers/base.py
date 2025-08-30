@@ -3,16 +3,16 @@ from typing import Any
 
 from litellm import completion
 
-from tiny_chat.generator import (
+from tiny_chat.config import ModelProviderConfig
+from tiny_chat.utils.logger import logger as log
+
+from .generate import (
     agenerate,
     agenerate_action,
     agenerate_goal,
     generate_action,
     generate_goal,
 )
-from tiny_chat.utils.logger import logger as log
-
-from ..config import ModelProviderConfig
 
 
 class BaseModelProvider(ABC):
@@ -53,13 +53,9 @@ class BaseModelProvider(ABC):
     def _prepare_model_config(
         self, model_name: str
     ) -> tuple[str | None, str | None, str]:
-        try:
-            from tiny_chat.generator import _prepare_provider_config
+        from .utils import prepare_model_config_from_name
 
-            api_base, api_key, eff_model = _prepare_provider_config(model_name)
-        except Exception:
-            api_base, api_key, eff_model = (None, None, model_name)
-        return api_base, api_key, eff_model
+        return prepare_model_config_from_name(model_name)
 
     def sync_generate_with_parser(
         self,
@@ -75,9 +71,9 @@ class BaseModelProvider(ABC):
             resp = completion(
                 model=eff_model,
                 messages=messages,
-                temperature=temperature
-                if temperature is not None
-                else self.config.temperature,
+                temperature=(
+                    temperature if temperature is not None else self.config.temperature
+                ),
                 drop_params=True,
                 base_url=api_base,
                 api_key=api_key,

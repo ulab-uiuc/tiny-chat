@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
-from ..config import ModelProviderConfig
+from tiny_chat.config import ModelProviderConfig
+
 from .base import BaseModelProvider
 from .litellm_provider import LiteLLMProvider
 from .workflow_provider import WorkflowProvider

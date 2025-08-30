@@ -4,12 +4,12 @@ import asyncio
 import json
 from typing import Any
 
-from tiny_chat.generator.generate import (
+from tiny_chat.messages import ScriptBackground
+from tiny_chat.providers.generate import (
     agenerate_action,
     agenerate_env_profile,
     agenerate_script,
 )
-from tiny_chat.messages import ScriptBackground
 
 
 def _print_result(obj: Any) -> None:

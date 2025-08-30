@@ -196,15 +196,6 @@ class ConfigManager:
                     name='gpt-4', type='openai', temperature=0.7
                 ),
             },
-            evaluators=[
-                EvaluatorConfig(
-                    type='rule_based',
-                    config={'max_turn_number': 20, 'max_stale_turn': 2},
-                ),
-                EvaluatorConfig(
-                    type='llm', model='gpt-4o-mini', config={'dimensions': 'sotopia'}
-                ),
-            ],
             default_model='gpt-4o-mini',
         )
 
@@ -232,3 +223,15 @@ def get_config() -> ServerConfig:
 def get_model_config(model_name: str) -> ModelProviderConfig:
     """Get model configuration by name"""
     return config_manager.get_model_config(model_name)
+
+
+__all__ = [
+    'ModelProviderConfig',
+    'EvaluatorConfig',
+    'ServerConfig',
+    'APIConfig',
+    'LoggingConfig',
+    'ConfigManager',
+    'get_config',
+    'get_model_config',
+]

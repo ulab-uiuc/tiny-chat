@@ -1,5 +1,4 @@
 import logging
-import os
 from logging import FileHandler, StreamHandler
 from pathlib import Path
 

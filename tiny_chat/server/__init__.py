@@ -1,12 +1,17 @@
-from .config import ConfigManager, EvaluatorConfig, ModelProviderConfig, ServerConfig
-from .core import TinyChatServer
-from .plugins import EvaluatorPlugin, LLMEvaluatorPlugin, PluginManager, RuleBasedPlugin
-from .providers import (
+from tiny_chat.config import (
+    ConfigManager,
+    EvaluatorConfig,
+    ModelProviderConfig,
+    ServerConfig,
+)
+from tiny_chat.providers import (
     BaseModelProvider,
     LiteLLMProvider,
     ModelProviderFactory,
     WorkflowProvider,
 )
+
+from .core import TinyChatServer
 
 __all__ = [
     'TinyChatServer',
@@ -18,17 +23,11 @@ __all__ = [
     'LiteLLMProvider',
     'WorkflowProvider',
     'ModelProviderFactory',
-    'EvaluatorPlugin',
-    'PluginManager',
-    'LLMEvaluatorPlugin',
-    'RuleBasedPlugin',
 ]
 
-# Optional API import - only if FastAPI is available
 try:
     from .api import app
 
     __all__.append('app')
 except ImportError:
-    # FastAPI not available, app will be None
     app = None

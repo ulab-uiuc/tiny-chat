@@ -9,9 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field
 
+from tiny_chat.config import get_config
+
 from ..messages import TinyChatBackground
 from ..utils import EpisodeLog
-from .config import get_config
 from .core import TinyChatServer, create_server
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,6 @@ async def lifespan(app: FastAPI):
 
     logger.info('Starting TinyChat API Server...')
 
-    # Initialize server
     async with create_server() as server:
         server_instance = server
         logger.info('TinyChat Server initialized')
@@ -35,7 +35,6 @@ async def lifespan(app: FastAPI):
     logger.info('TinyChat API Server shutting down...')
 
 
-# Create FastAPI app
 app = FastAPI(
     title='TinyChat API',
     description='Multi-agent conversation API powered by TinyChat',
@@ -43,7 +42,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add middleware
 config = get_config()
 app.add_middleware(
     CORSMiddleware,
@@ -55,14 +53,12 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
-# Dependency to get server instance
 def get_server() -> TinyChatServer:
     if server_instance is None:
         raise HTTPException(status_code=503, detail='Server not initialized')
     return server_instance
 
 
-# Request/Response Models
 class AgentConfig(BaseModel):
     """Configuration for a single agent"""
 
@@ -192,15 +188,12 @@ async def create_conversation(
     conversation_id = str(uuid.uuid4())
 
     try:
-        # Convert agent configs
         agent_configs = [config.dict() for config in request.agent_configs]
 
-        # Convert background if provided
         background = None
         if request.background:
             background = TinyChatBackground(**request.background)
 
-        # Validate model
         model_name = request.model_name or get_config().default_model
         model_info = await server.get_model_info()
         if model_name not in model_info:
@@ -208,7 +201,6 @@ async def create_conversation(
                 status_code=400, detail=f"Model '{model_name}' not available"
             )
 
-        # Store conversation info
         conversations[conversation_id] = {
             'status': 'running',
             'agent_count': len(agent_configs),
@@ -216,7 +208,6 @@ async def create_conversation(
             'created_at': asyncio.get_event_loop().time(),
         }
 
-        # Run conversation asynchronously
         async def run_conversation():
             try:
                 logger.info(f'Starting conversation {conversation_id}')
@@ -233,7 +224,6 @@ async def create_conversation(
                     return_log=request.return_log,
                 )
 
-                # Update conversation status
                 conversations[conversation_id].update(
                     {
                         'status': 'completed',
@@ -254,7 +244,6 @@ async def create_conversation(
                     }
                 )
 
-        # Start conversation in background
         background_tasks.add_task(run_conversation)
 
         return ConversationResponse(

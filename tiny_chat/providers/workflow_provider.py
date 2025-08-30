@@ -3,7 +3,8 @@ from typing import Any
 
 import httpx
 
-from ..config import ModelProviderConfig
+from tiny_chat.config import ModelProviderConfig
+
 from .base import BaseModelProvider
 
 logger = logging.getLogger(__name__)

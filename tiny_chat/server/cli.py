@@ -4,7 +4,7 @@ from pathlib import Path
 import click
 import uvicorn
 
-from .config import ConfigManager
+from tiny_chat.config import ConfigManager
 
 logger = logging.getLogger(__name__)
 

@@ -82,6 +82,7 @@ print(result.json())
 ## Model Provider Examples
 
 ### OpenAI
+
 ```yaml
 models:
   gpt-4:
@@ -92,6 +93,7 @@ models:
 ```
 
 ### Anthropic
+
 ```yaml
 models:
   claude:
@@ -102,6 +104,7 @@ models:
 ```
 
 ### Together AI
+
 ```yaml
 models:
   llama-70b:
@@ -112,6 +115,7 @@ models:
 ```
 
 ### vLLM
+
 ```yaml
 models:
   llama-2-7b:
@@ -122,6 +126,7 @@ models:
 ```
 
 ### Ollama
+
 ```yaml
 models:
   llama2:
@@ -132,6 +137,7 @@ models:
 ```
 
 ### Azure OpenAI
+
 ```yaml
 models:
   gpt-4-azure:
@@ -170,8 +176,8 @@ models:
     name: my-workflow-model
     type: workflow
     custom_config:
-      request_handler: "default"     # Use default request handler
-      response_parser: "default"     # Use default response parser
+      request_handler: "default" # Use default request handler
+      response_parser: "default" # Use default response parser
       endpoint: "https://your-api.com/generate"
       headers:
         Authorization: "Bearer ${YOUR_API_KEY}"
@@ -230,7 +236,7 @@ class MyCustomRequestHandler(RequestHandler):
     async def process(self, prompt: str, **kwargs) -> dict[str, Any]:
         # Custom request logic
         endpoint = self.config.get("endpoint")
-        
+
         # Build special format request
         request_data = {
             "input_text": prompt,
@@ -239,7 +245,7 @@ class MyCustomRequestHandler(RequestHandler):
                 "max_tokens": kwargs.get("max_tokens", 100)
             }
         }
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(endpoint, json=request_data)
             return response.json()
@@ -248,7 +254,7 @@ class MyCustomResponseParser(ResponseParser):
     def parse(self, raw_response: dict[str, Any]) -> ModelResponse:
         # Custom response parsing
         content = raw_response.get("generated_text", "")
-        
+
         return ModelResponse(
             content=content,
             usage=raw_response.get("usage"),
@@ -284,7 +290,7 @@ class EnsembleRequestHandler(RequestHandler):
         # Call multiple models
         model_endpoints = self.config.get("models", [])
         responses = []
-        
+
         async with httpx.AsyncClient() as client:
             for endpoint in model_endpoints:
                 response = await client.post(
@@ -296,16 +302,16 @@ class EnsembleRequestHandler(RequestHandler):
                     "response": response.json().get("text", ""),
                     "confidence": response.json().get("confidence", 0.5)
                 })
-        
+
         return {"responses": responses}
 
 class EnsembleResponseParser(ResponseParser):
     def parse(self, raw_response: dict[str, Any]) -> ModelResponse:
         responses = raw_response["responses"]
-        
+
         # Select highest confidence response
         best = max(responses, key=lambda x: x["confidence"])
-        
+
         return ModelResponse(
             content=best["response"],
             metadata={
@@ -323,12 +329,12 @@ class PostProcessingRequestHandler(RequestHandler):
     async def process(self, prompt: str, **kwargs) -> dict[str, Any]:
         # 1. Call base model
         base_response = await self._call_base_model(prompt, **kwargs)
-        
+
         # 2. Call post-processing model (e.g., grammar check, fact check)
         processed_response = await self._post_process(
             base_response.get("text", "")
         )
-        
+
         return {
             "original": base_response.get("text", ""),
             "processed": processed_response.get("text", ""),
@@ -434,7 +440,7 @@ evaluators:
 
   - type: llm
     enabled: true
-    model: gpt-4o-mini   # must match a model in models:
+    model: gpt-4o-mini # must match a model in models:
     config:
       dimensions: sotopia # optional, defaults to sotopia
 ```
@@ -533,9 +539,9 @@ def get_terminal_evaluator(self) -> Any:
 
 ### End-to-End Example
 
-1) Implement `MyEvaluatorPlugin` (above) and register it via `PluginManager.register_plugin`.
+1. Implement `MyEvaluatorPlugin` (above) and register it via `PluginManager.register_plugin`.
 
-2) Reference it in YAML:
+2. Reference it in YAML:
 
 ```yaml
 evaluators:
@@ -545,7 +551,7 @@ evaluators:
       threshold: 0.7
 ```
 
-3) Start the server and run a conversation. The plugin will contribute per-turn scores and reasoning which are aggregated by the environment.
+3. Start the server and run a conversation. The plugin will contribute per-turn scores and reasoning which are aggregated by the environment.
 
 ## CLI Usage
 
@@ -665,12 +671,13 @@ config_manager.save_config(config)
 ### Available HTTP API Endpoints
 
 - `GET /health` - Health check
-- `GET /models` - List available models  
+- `GET /models` - List available models
 - `POST /conversations` - Start conversation
 - `GET /conversations/{id}` - Get conversation status
 - `GET /metrics` - Prometheus metrics (if enabled)
 
 ### Logging
+
 ```yaml
 logging:
   level: INFO
@@ -696,7 +703,7 @@ CMD ["python", "-m", "tiny_chat.server.cli"]
 ### Docker Compose Example
 
 ```yaml
-version: '3.8'
+version: "3.8"
 services:
   tinychat:
     build: .

@@ -1,3 +1,5 @@
+from .base import BaseModelProvider
+from .factory import ModelProviderFactory
 from .generate import (
     agenerate,
     agenerate_action,
@@ -12,6 +14,7 @@ from .generate import (
     generate_goal,
     process_history,
 )
+from .litellm_provider import LiteLLMProvider
 from .output_parsers import (
     EnvResponse,
     ListOfIntOutputParser,
@@ -19,25 +22,37 @@ from .output_parsers import (
     ScriptOutputParser,
     StrOutputParser,
 )
+from .utils import (
+    build_model_name_from_config,
+    call_model_async,
+    call_model_sync,
+    prepare_model_config_from_name,
+    prepare_model_config_from_provider,
+)
+from .workflow_provider import WorkflowProvider
 
 __all__ = [
-    # Output parsers
+    'BaseModelProvider',
+    'LiteLLMProvider',
+    'WorkflowProvider',
+    'ModelProviderFactory',
+    'prepare_model_config_from_name',
+    'prepare_model_config_from_provider',
+    'build_model_name_from_config',
+    'call_model_async',
+    'call_model_sync',
     'EnvResponse',
     'StrOutputParser',
     'ScriptOutputParser',
     'PydanticOutputParser',
     'ListOfIntOutputParser',
-    # Core generation functions
     'agenerate',
     'agenerate_action',
     'agenerate_goal',
-    # Profile generation functions
     'agenerate_env_profile',
     'agenerate_init_profile',
     'agenerate_relationship_profile',
-    # Script generation functions
     'agenerate_script',
-    # Utility functions
     'convert_narratives',
     'format_bad_output',
     'process_history',

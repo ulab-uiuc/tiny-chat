@@ -7,13 +7,13 @@ from tiny_chat.profiles import BaseAgentProfile
 from .base_agent import BaseAgent
 
 if TYPE_CHECKING:
-    from tiny_chat.server.providers.base import BaseModelProvider
+    from tiny_chat.providers import BaseModelProvider
 
 
 def _create_default_model_provider() -> 'BaseModelProvider':
     """Create a default model provider using gpt-4o-mini"""
-    from tiny_chat.server.config import ModelProviderConfig
-    from tiny_chat.server.providers.factory import ModelProviderFactory
+    from tiny_chat.config import ModelProviderConfig
+    from tiny_chat.providers import ModelProviderFactory
 
     default_config = ModelProviderConfig(
         name='gpt-4o-mini', type='openai', temperature=0.7

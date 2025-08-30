@@ -11,10 +11,9 @@
 
 </div>
 
-
 # Introduction
 
-**Tiny-Chat** is a lightweight , user-friendly and highly extensible multi-agent stimulation framework. Designed for social stimulation research. 
+**Tiny-Chat** is a lightweight , user-friendly and highly extensible multi-agent stimulation framework. Designed for social stimulation research.
 
 ### Core Features
 
@@ -27,6 +26,7 @@
 - **🚀 Server Architecture**: High-performance server with HTTP API and configuration management
 
 # Installation
+
 **Install from source**
 
 ```bash
@@ -72,7 +72,7 @@ async def basic_conversation():
         },
         default_model='gpt-4o-mini'
     )
-    
+
     async with TinyChatServer(config) as server:
         episode_log = await server.run_conversation(
             agent_configs=[
@@ -82,7 +82,7 @@ async def basic_conversation():
             scenario="Two colleagues discussing a new project collaboration",
             max_turns=10
         )
-        
+
         print(f"Conversation completed: {episode_log.reasoning}")
 
 asyncio.run(basic_conversation())
@@ -117,6 +117,7 @@ api:
 ```
 
 Start the server:
+
 ```bash
 python -m tiny_chat.server.cli serve
 ```
@@ -154,7 +155,7 @@ class CustomEvaluatorPlugin(EvaluatorPlugin):
     @property
     def plugin_type(self) -> str:
         return 'custom'
-    
+
     def _create_evaluator(self) -> Evaluator:
         return CustomEvaluator()
 

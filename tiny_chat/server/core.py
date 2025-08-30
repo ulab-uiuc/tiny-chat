@@ -2,16 +2,15 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from ..agents import LLMAgent
-from ..envs import TinyChatEnvironment
-from ..evaluator import RuleBasedTerminatedEvaluator
-from ..messages import TinyChatBackground
-from ..utils import EpisodeLog
-from ..utils.json_saver import save_conversation_to_json
-from ..utils.logger import setup_logging
-from .config import ServerConfig, get_config
-from .plugins import PluginManager
-from .providers import BaseModelProvider, ModelProviderFactory
+from tiny_chat.agents import LLMAgent
+from tiny_chat.config import ServerConfig, get_config
+from tiny_chat.envs import TinyChatEnvironment
+from tiny_chat.evaluator import EvaluatorManager
+from tiny_chat.messages import TinyChatBackground
+from tiny_chat.providers import BaseModelProvider, ModelProviderFactory
+from tiny_chat.utils import EpisodeLog
+from tiny_chat.utils.json_saver import save_conversation_to_json
+from tiny_chat.utils.logger import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class TinyChatServer:
     def __init__(self, config: ServerConfig | None = None):
         self.config = config or get_config()
         self.model_providers: dict[str, BaseModelProvider] = {}
-        self.plugin_manager = PluginManager()
+        self.evaluator_manager = EvaluatorManager()
         self._setup_logging()
 
     async def initialize(self) -> None:
@@ -30,7 +29,7 @@ class TinyChatServer:
         logger.info('Initializing TinyChat Server...')
 
         await self._load_model_providers()
-        await self._load_plugins()
+        await self._load_evaluators()
 
         logger.info(
             f'Server initialized with {len(self.model_providers)} model providers'
@@ -46,18 +45,26 @@ class TinyChatServer:
             except Exception as e:
                 logger.error(f'Failed to load provider {name}: {e}')
 
-    async def _load_plugins(self) -> None:
-        """Load evaluator plugins"""
+    async def _load_evaluators(self) -> None:
         for evaluator_config in self.config.evaluators:
             if not evaluator_config.enabled:
                 continue
 
             try:
-                plugin = self.plugin_manager.create_evaluator(
-                    evaluator_config, self.model_providers
+                from ..evaluator import EvaluatorConfig
+
+                eval_config = EvaluatorConfig(
+                    type=evaluator_config.type,
+                    config=evaluator_config.config,
+                    model=evaluator_config.model,
+                    enabled=evaluator_config.enabled,
                 )
-                if plugin:
-                    logger.info(f'Loaded evaluator plugin: {evaluator_config.type}')
+
+                evaluator = self.evaluator_manager.create_evaluator(
+                    eval_config, self.model_providers
+                )
+                if evaluator:
+                    logger.info(f'Loaded evaluator: {evaluator_config.type}')
             except Exception as e:
                 logger.error(f'Failed to load evaluator {evaluator_config.type}: {e}')
 
@@ -188,27 +195,28 @@ class TinyChatServer:
     def _create_evaluators(
         self, max_turns: int, enable_evaluation: bool
     ) -> tuple[list, list]:
-        evaluators = [RuleBasedTerminatedEvaluator(max_turn_number=max_turns)]
+        evaluators = []
         terminal_evaluators = []
 
-        if not enable_evaluation:
-            return evaluators, terminal_evaluators
+        for evaluator in self.evaluator_manager.get_evaluators():
+            evaluator_type = evaluator.evaluator_type
 
-        for plugin in self.plugin_manager.get_evaluators():
-            plugin_type = plugin.plugin_type
-
-            if plugin_type == 'rule_based':
-                # Rule-based evaluators run during conversation to check termination conditions
-                evaluators.append(plugin)
-            elif plugin_type == 'llm':
-                # LLM evaluators run only at the end to assess conversation quality
-                if hasattr(plugin, 'get_terminal_evaluator'):
-                    term = plugin.get_terminal_evaluator()
+            if evaluator_type == 'rule_based':
+                evaluators.append(evaluator)
+            elif evaluator_type == 'llm' and enable_evaluation:
+                if hasattr(evaluator, 'get_terminal_evaluator'):
+                    term = evaluator.get_terminal_evaluator()
                     if term:
                         terminal_evaluators.append(term)
             else:
-                # For other plugin types, add to evaluators by default
-                evaluators.append(plugin)
+                evaluators.append(evaluator)
+
+        if not any(
+            evaluator.evaluator_type == 'rule_based' for evaluator in evaluators
+        ):
+            logger.warning(
+                'No rule-based evaluator configured, conversation may not terminate properly'
+            )
 
         return evaluators, terminal_evaluators
 
@@ -257,7 +265,6 @@ class TinyChatServer:
                 f"Creating {name} with provider '{type(provider).__name__ if provider else 'default'}'"
             )
 
-            # Create agent with existing profile if provided, or create a basic one
             agent = LLMAgent(
                 agent_name=name,
                 model_provider=provider,

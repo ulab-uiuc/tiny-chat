@@ -35,7 +35,7 @@ class DataLoader:
             if local_path is None:
                 raise ValueError('local_path must be provided to load local data')
             try:
-                with open(local_path, 'r') as f:
+                with open(local_path) as f:
                     self.agent_profiles = list
                     for line in f:
                         self.agent_profiles.append(json.loads(line.strip()))
@@ -87,7 +87,7 @@ class DataLoader:
             if local_path is None:
                 raise ValueError('local_path must be provided to load local data')
             try:
-                with open(local_path, 'r') as f:
+                with open(local_path) as f:
                     self.env_profiles = list
                     for line in f:
                         self.env_profiles.append(json.loads(line.strip()))
@@ -135,7 +135,7 @@ class DataLoader:
             if local_path is None:
                 raise ValueError('local_path must be provided to load local data')
             try:
-                with open(local_path, 'r') as f:
+                with open(local_path) as f:
                     self.relationship_profiles = list
                     for line in f:
                         self.relationship_profiles.append(json.loads(line.strip()))
