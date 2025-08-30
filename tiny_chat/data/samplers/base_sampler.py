@@ -2,10 +2,9 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Sequence
 from typing import Any, Generic, TypeVar
 
-from tiny_chat.agents.base_agent import BaseAgent
+from tiny_chat.agents import BaseAgent
 from tiny_chat.envs import TinyChatEnvironment
-from tiny_chat.profiles.agent_profile import BaseAgentProfile
-from tiny_chat.profiles.enviroment_profile import BaseEnvironmentProfile
+from tiny_chat.profiles import BaseAgentProfile, BaseEnvironmentProfile
 
 ObsType = TypeVar('ObsType')
 ActType = TypeVar('ActType')
@@ -33,8 +32,9 @@ class BaseSampler(Generic[ObsType, ActType], ABC):
     @abstractmethod
     def sample(
         self,
-        agent_classes: type[BaseAgent[ObsType, ActType]]
-        | list[type[BaseAgent[ObsType, ActType]]],
+        agent_classes: (
+            type[BaseAgent[ObsType, ActType]] | list[type[BaseAgent[ObsType, ActType]]]
+        ),
         n_agent: int = 2,
         replacement: bool = True,
         size: int = 1,

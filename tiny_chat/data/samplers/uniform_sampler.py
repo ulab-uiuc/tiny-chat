@@ -2,12 +2,11 @@ import random
 from collections.abc import Generator
 from typing import Any, TypeVar
 
-from tiny_chat.agents.base_agent import BaseAgent
+from tiny_chat.agents import BaseAgent
 from tiny_chat.envs import TinyChatEnvironment
-from tiny_chat.profiles.agent_profile import BaseAgentProfile
-from tiny_chat.profiles.enviroment_profile import BaseEnvironmentProfile
-from tiny_chat.utils.data_loader import DataLoader
+from tiny_chat.profiles import BaseAgentProfile, BaseEnvironmentProfile
 
+from ..loader import DataLoader
 from .base_sampler import BaseSampler, EnvAgentCombo
 
 ObsType = TypeVar('ObsType')
@@ -35,8 +34,9 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
 
     def sample(
         self,
-        agent_classes: type[BaseAgent[ObsType, ActType]]
-        | list[type[BaseAgent[ObsType, ActType]]],
+        agent_classes: (
+            type[BaseAgent[ObsType, ActType]] | list[type[BaseAgent[ObsType, ActType]]]
+        ),
         n_agent: int = 2,
         replacement: bool = True,
         size: int = 1,
