@@ -56,4 +56,6 @@ __all__ = [
     'convert_narratives',
     'format_bad_output',
     'process_history',
+    'generate_action',
+    'generate_goal',
 ]

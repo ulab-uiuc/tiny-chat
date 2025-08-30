@@ -9,7 +9,7 @@ from .base import BaseEvaluator
 from .dimensions import SotopiaDimensions
 
 if TYPE_CHECKING:
-    from tiny_chat.server.providers.base import BaseModelProvider
+    from tiny_chat.providers import BaseModelProvider
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
                         agent_names.append(sender)
             prompt = self._build_evaluation_prompt(history)
 
-            from tiny_chat.generator.output_parsers import PydanticOutputParser
+            from tiny_chat.providers.output_parsers import PydanticOutputParser
 
             from .utils import EvaluationForMultipleAgents
 

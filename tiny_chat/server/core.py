@@ -8,9 +8,7 @@ from tiny_chat.envs import TinyChatEnvironment
 from tiny_chat.evaluator import EvaluatorManager
 from tiny_chat.messages import TinyChatBackground
 from tiny_chat.providers import BaseModelProvider, ModelProviderFactory
-from tiny_chat.utils import EpisodeLog
-from tiny_chat.utils.json_saver import save_conversation_to_json
-from tiny_chat.utils.logger import setup_logging
+from tiny_chat.utils import EpisodeLog, save_conversation_to_json, setup_logging
 
 logger = logging.getLogger(__name__)
 

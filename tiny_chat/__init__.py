@@ -46,6 +46,8 @@ from .providers import (
     agenerate_script,
     convert_narratives,
     format_bad_output,
+    generate_action,
+    generate_goal,
     process_history,
 )
 from .server import TinyChatServer
@@ -93,4 +95,6 @@ __all__ = [
     'RelationshipType',
     'ModelProviderConfig',
     'ModelProviderFactory',
+    'generate_action',
+    'generate_goal',
 ]

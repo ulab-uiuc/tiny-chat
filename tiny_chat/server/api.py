@@ -10,9 +10,9 @@ from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field
 
 from tiny_chat.config import get_config
+from tiny_chat.messages import TinyChatBackground
+from tiny_chat.utils import EpisodeLog
 
-from ..messages import TinyChatBackground
-from ..utils import EpisodeLog
 from .core import TinyChatServer, create_server
 
 logger = logging.getLogger(__name__)
