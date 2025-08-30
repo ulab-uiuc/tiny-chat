@@ -1,7 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from tiny_chat.generator import (
+from litellm import completion
+
+from tiny_chat.config import ModelProviderConfig
+from tiny_chat.utils.logger import logger as log
+
+from .generate import (
     agenerate,
     agenerate_action,
     agenerate_goal,
@@ -9,11 +14,9 @@ from tiny_chat.generator import (
     generate_goal,
 )
 
-from ..config import ModelProviderConfig
-
 
 class BaseModelProvider(ABC):
-    def __init__(self, config: ModelProviderConfig):
+    def __init__(self, config: ModelProviderConfig) -> None:
         self.config = config
         self.name = config.name
         self.type = config.type
@@ -33,7 +36,7 @@ class BaseModelProvider(ABC):
         output_parser: Any,
         temperature: float | None = None,
         structured_output: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> Any:
         model_name = self._get_agenerate_model_name()
 
@@ -47,6 +50,41 @@ class BaseModelProvider(ABC):
             **kwargs,
         )
 
+    def _prepare_model_config(
+        self, model_name: str
+    ) -> tuple[str | None, str | None, str]:
+        from .utils import prepare_model_config_from_name
+
+        return prepare_model_config_from_name(model_name)
+
+    def sync_generate_with_parser(
+        self,
+        prompt: str,
+        output_parser: Any,
+        temperature: float | None = None,
+    ) -> Any:
+        model_name = self._get_agenerate_model_name()
+        api_base, api_key, eff_model = self._prepare_model_config(model_name)
+
+        messages = [{'role': 'user', 'content': prompt}]
+        try:
+            resp = completion(
+                model=eff_model,
+                messages=messages,
+                temperature=(
+                    temperature if temperature is not None else self.config.temperature
+                ),
+                drop_params=True,
+                base_url=api_base,
+                api_key=api_key,
+            )
+            text = resp.choices[0].message.content
+            assert isinstance(text, str)
+            return output_parser.parse(text)
+        except Exception as e:
+            log.debug(f'[red] sync_generate_with_parser failed: {e}')
+            raise
+
     async def agenerate_action(
         self,
         history: str,
@@ -56,7 +94,7 @@ class BaseModelProvider(ABC):
         goal: str,
         script_like: bool = False,
         temperature: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Any:
         model_name = self._get_agenerate_model_name()
 
@@ -64,7 +102,7 @@ class BaseModelProvider(ABC):
             model_name=model_name,
             history=history,
             turn_number=turn_number,
-            action_types=action_types,
+            action_types=action_types,  # type: ignore[arg-type]
             agent=agent,
             goal=goal,
             temperature=temperature or self.config.temperature,
@@ -81,7 +119,7 @@ class BaseModelProvider(ABC):
         goal: str,
         script_like: bool = False,
         temperature: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Any:
         """Synchronous version of action generation"""
         model_name = self._get_agenerate_model_name()
@@ -90,7 +128,7 @@ class BaseModelProvider(ABC):
             model_name=model_name,
             history=history,
             turn_number=turn_number,
-            action_types=action_types,
+            action_types=action_types,  # type: ignore[arg-type]
             agent=agent,
             goal=goal,
             temperature=temperature or self.config.temperature,
@@ -102,7 +140,7 @@ class BaseModelProvider(ABC):
         self,
         background: str,
         temperature: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Synchronous version of goal generation"""
         model_name = self._get_agenerate_model_name()
@@ -118,7 +156,7 @@ class BaseModelProvider(ABC):
         self,
         background: str,
         temperature: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Asynchronous version of goal generation"""
         model_name = self._get_agenerate_model_name()
@@ -126,7 +164,6 @@ class BaseModelProvider(ABC):
         return await agenerate_goal(
             model_name=model_name,
             background=background,
-            temperature=temperature or self.config.temperature,
             **kwargs,
         )
 

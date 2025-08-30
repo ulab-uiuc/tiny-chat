@@ -1,15 +1,16 @@
 import json
 import os
 from datetime import datetime
+from typing import Any
 
 
 def save_conversation_to_json(
-    agent_profile,
-    environment_profile,
-    conversation_history,
-    evaluation,
-    output_dir='conversation_logs',
-):
+    agent_profile: Any,
+    environment_profile: Any,
+    conversation_history: Any,
+    evaluation: Any,
+    output_dir: str = 'conversation_logs',
+) -> None:
     """
     Save the conversation details to a JSON file.
 
@@ -26,12 +27,12 @@ def save_conversation_to_json(
     # Prepare the data to save
     data = {
         'agent_profile': agent_profile if agent_profile is not None else {},
-        'environment_profile': environment_profile
-        if environment_profile is not None
-        else '',
-        'conversation_history': conversation_history
-        if conversation_history is not None
-        else '',
+        'environment_profile': (
+            environment_profile if environment_profile is not None else ''
+        ),
+        'conversation_history': (
+            conversation_history if conversation_history is not None else ''
+        ),
         'evaluation': evaluation if evaluation is not None else {},
     }
 
