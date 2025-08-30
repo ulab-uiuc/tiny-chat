@@ -159,19 +159,23 @@ class TinyChatEnvironment(BaseChatEnivronment):
         agent_items = list(agents.items())
 
         temp_id_counter = len(self.speaking_order)
-        for agent_name, agent in agent_items:
+        for _agent_name, agent in agent_items:
             if not hasattr(agent, 'speaking_id'):
                 agent.speaking_id = temp_id_counter
                 temp_id_counter += 1
 
-        def get_speaking_order(item):
+        def get_speaking_order(item: tuple[str, Any]) -> int:
             agent_name, agent = item
             if hasattr(agent, 'speaking_id'):
                 agent_id = agent.speaking_id
                 try:
-                    return self.speaking_order.index(agent_id)
+                    return (
+                        self.speaking_order.index(agent_id)
+                        if self.speaking_order
+                        else 0
+                    )
                 except ValueError:
-                    return len(self.speaking_order)
+                    return len(self.speaking_order) if self.speaking_order else 0
             return len(self.speaking_order)
 
         agent_items.sort(key=get_speaking_order)
@@ -199,7 +203,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
             if hasattr(agent, 'speaking_id'):
                 agent_id = agent.speaking_id
             else:
-                agent_id = len(self.speaking_order) if self.speaking_order else 0
+                agent_id = (
+                    len(self.speaking_order) if self.speaking_order is not None else 0
+                )
 
             if not lite:
                 if hasattr(agent, 'profile'):

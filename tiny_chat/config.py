@@ -35,7 +35,7 @@ class ModelProviderConfig(BaseModel):
     )
 
     @validator('api_key')
-    def resolve_api_key(cls, v, values):
+    def resolve_api_key(cls, v: str | None, values: dict[str, Any]) -> str | None:
         """Resolve API key from environment if not provided"""
         if v is None:
             provider_type = values.get('type', '').upper()
@@ -132,7 +132,7 @@ class ServerConfig(BaseModel):
     )
 
     @validator('default_model')
-    def validate_default_model(cls, v, values):
+    def validate_default_model(cls, v: str, values: dict[str, Any]) -> str:
         """Ensure default model exists in models config"""
         models = values.get('models', {})
         if v not in models:

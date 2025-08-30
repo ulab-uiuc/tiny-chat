@@ -26,6 +26,69 @@ def prepare_model_config_from_provider(
     return api_base, api_key, effective_model
 
 
+def _ensure_v1(url: str) -> str:
+    """Ensure URL ends with /v1"""
+    if not url:
+        return 'http:///v1'
+
+    if not url.startswith(('http://', 'https://')):
+        url = 'http://' + url
+
+    if url.endswith('/v1'):
+        return url
+    trimmed = url[:-1] if url.endswith('/') else url
+    return trimmed + '/v1'
+
+
+def _parse_vllm_config(model_name: str) -> tuple[str | None, str | None, str]:
+    """Parse vLLM configuration"""
+    payload = model_name[len('vllm://') :]
+    if '@' not in payload:
+        raise ValueError(
+            "vllm:// requires '<model>@<base_url>' or '<base_url>@<model>'"
+        )
+    a, b = payload.split('@', 1)
+    if urlparse(a).scheme or a.startswith(
+        ('http://', 'https://', 'localhost', '127.0.0.1')
+    ):
+        base, model = a, b
+    else:
+        model, base = a, b
+    api_base = _ensure_v1(base)
+    api_key = os.getenv('VLLM_API_KEY')  # optional
+    return api_base, api_key, model
+
+
+def _parse_together_config(model_name: str) -> tuple[str | None, str | None, str]:
+    """Parse Together configuration"""
+    model = model_name[len('together://') :]
+    api_base = 'https://api.together.xyz/v1'
+    api_key = os.getenv('TOGETHER_API_KEY')
+    return api_base, api_key, model
+
+
+def _parse_custom_config(
+    model_name: str, is_legacy: bool = False
+) -> tuple[str | None, str | None, str]:
+    """Parse custom configuration"""
+    prefix = 'custom/' if is_legacy else 'custom://'
+    payload = model_name[len(prefix) :]
+    if '@' not in payload:
+        raise ValueError(f"{prefix} requires '<model>@<base_url>'")
+    model, base = payload.split('@', 1)
+    api_base = base
+    api_key = os.getenv('CUSTOM_API_KEY', 'EMPTY')
+
+    if is_legacy:
+        effective_model = (
+            f'openai/{model}' if not model.startswith('openai/') else model
+        )
+    else:
+        effective_model = model
+
+    return api_base, api_key, effective_model
+
+
 def prepare_model_config_from_name(
     model_name: str,
 ) -> tuple[str | None, str | None, str]:
@@ -37,72 +100,21 @@ def prepare_model_config_from_name(
     - Together (OpenAI-compatible):      "together://<model>"
     - Custom OpenAI-compatible proxy:    "custom://<model>@<base>" or legacy "custom/<model>@<base>"
     """
-    api_base: str | None = None
-    api_key: str | None = None
-    effective_model = model_name
-
-    def _ensure_v1(url: str) -> str:
-        if not url:
-            return 'http:///v1'
-
-        if not url.startswith(('http://', 'https://')):
-            url = 'http://' + url
-
-        if url.endswith('/v1'):
-            return url
-        trimmed = url[:-1] if url.endswith('/') else url
-        return trimmed + '/v1'
-
     # vLLM
     if model_name.startswith('vllm://'):
-        payload = model_name[len('vllm://') :]
-        if '@' not in payload:
-            raise ValueError(
-                "vllm:// requires '<model>@<base_url>' or '<base_url>@<model>'"
-            )
-        a, b = payload.split('@', 1)
-        if urlparse(a).scheme or a.startswith(
-            ('http://', 'https://', 'localhost', '127.0.0.1')
-        ):
-            base, model = a, b
-        else:
-            model, base = a, b
-        api_base = _ensure_v1(base)
-        api_key = os.getenv('VLLM_API_KEY')  # optional
-        effective_model = model
-        return api_base, api_key, effective_model
+        return _parse_vllm_config(model_name)
 
     # Together
     if model_name.startswith('together://'):
-        model = model_name[len('together://') :]
-        api_base = 'https://api.together.xyz/v1'
-        api_key = os.getenv('TOGETHER_API_KEY')
-        effective_model = model
-        return api_base, api_key, effective_model
+        return _parse_together_config(model_name)
 
     # Custom proxy (new scheme)
     if model_name.startswith('custom://'):
-        payload = model_name[len('custom://') :]
-        if '@' not in payload:
-            raise ValueError("custom:// requires '<model>@<base_url>'")
-        model, base = payload.split('@', 1)
-        api_base = base
-        api_key = os.getenv('CUSTOM_API_KEY', 'EMPTY')
-        effective_model = model
-        return api_base, api_key, effective_model
+        return _parse_custom_config(model_name, is_legacy=False)
 
     # Custom proxy (legacy form)
     if model_name.startswith('custom/'):
-        payload = model_name[len('custom/') :]
-        if '@' not in payload:
-            raise ValueError("custom/ requires '<model>@<base_url>'")
-        model, base = payload.split('@', 1)
-        api_base = base
-        api_key = os.getenv('CUSTOM_API_KEY', 'EMPTY')
-        effective_model = (
-            f'openai/{model}' if not model.startswith('openai/') else model
-        )
-        return api_base, api_key, effective_model
+        return _parse_custom_config(model_name, is_legacy=True)
 
     # default OpenAI
     return None, None, model_name

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class RuleBasedEvaluator(BaseEvaluator):
     def __init__(
         self,
-        config: dict[str, Any] = None,
+        config: dict[str, Any] | None = None,
         max_turn_number: int = 20,
         max_stale_turn: int = 2,
         leave_detector: Callable[[list[tuple[str, Message]]], bool] | None = None,

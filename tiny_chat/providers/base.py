@@ -16,7 +16,7 @@ from .generate import (
 
 
 class BaseModelProvider(ABC):
-    def __init__(self, config: ModelProviderConfig):
+    def __init__(self, config: ModelProviderConfig) -> None:
         self.config = config
         self.name = config.name
         self.type = config.type
@@ -36,7 +36,7 @@ class BaseModelProvider(ABC):
         output_parser: Any,
         temperature: float | None = None,
         structured_output: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> Any:
         model_name = self._get_agenerate_model_name()
 
@@ -94,7 +94,7 @@ class BaseModelProvider(ABC):
         goal: str,
         script_like: bool = False,
         temperature: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Any:
         model_name = self._get_agenerate_model_name()
 
@@ -102,7 +102,7 @@ class BaseModelProvider(ABC):
             model_name=model_name,
             history=history,
             turn_number=turn_number,
-            action_types=action_types,
+            action_types=action_types,  # type: ignore[arg-type]
             agent=agent,
             goal=goal,
             temperature=temperature or self.config.temperature,
@@ -119,7 +119,7 @@ class BaseModelProvider(ABC):
         goal: str,
         script_like: bool = False,
         temperature: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Any:
         """Synchronous version of action generation"""
         model_name = self._get_agenerate_model_name()
@@ -128,7 +128,7 @@ class BaseModelProvider(ABC):
             model_name=model_name,
             history=history,
             turn_number=turn_number,
-            action_types=action_types,
+            action_types=action_types,  # type: ignore[arg-type]
             agent=agent,
             goal=goal,
             temperature=temperature or self.config.temperature,
@@ -140,7 +140,7 @@ class BaseModelProvider(ABC):
         self,
         background: str,
         temperature: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Synchronous version of goal generation"""
         model_name = self._get_agenerate_model_name()
@@ -156,7 +156,7 @@ class BaseModelProvider(ABC):
         self,
         background: str,
         temperature: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Asynchronous version of goal generation"""
         model_name = self._get_agenerate_model_name()
@@ -164,7 +164,6 @@ class BaseModelProvider(ABC):
         return await agenerate_goal(
             model_name=model_name,
             background=background,
-            temperature=temperature or self.config.temperature,
             **kwargs,
         )
 

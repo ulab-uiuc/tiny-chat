@@ -5,7 +5,7 @@ from tiny_chat.messages import Message
 
 
 class BaseEvaluator(abc.ABC):
-    def __init__(self, config: dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
 
     @property

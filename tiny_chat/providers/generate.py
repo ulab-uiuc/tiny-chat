@@ -257,7 +257,9 @@ def generate_action(
             template = ACTION_NORMAL_TEMPLATE
 
         api_base, api_key, model_name = _prepare_provider_config(model_name)
-        output_parser = PydanticOutputParser(pydantic_object=AgentAction)
+        output_parser: PydanticOutputParser[AgentAction] = PydanticOutputParser(
+            pydantic_object=AgentAction
+        )
         format_instructions = output_parser.get_format_instructions()
         messages = [
             {
@@ -329,7 +331,7 @@ async def agenerate_action(
     except Exception as e:
         log.warning(f'Failed to generate action due to {e}')
 
-        async def return_default():
+        async def return_default() -> AgentAction:
             return AgentAction(action_type='none', argument='')
 
         return await return_default()

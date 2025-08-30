@@ -42,7 +42,7 @@ class BaseRelationshipProfile(BaseModel):
         description='Tag for the relationship network, used for classification and search',
     )
 
-    def add_agents(self, agent_ids: list[str]):
+    def add_agents(self, agent_ids: list[str]) -> None:
         """Add agents to the relationship network"""
         for agent_id in agent_ids:
             if agent_id not in self.agent_ids:
@@ -117,8 +117,8 @@ class FineGrainedRelationshipProfile(BaseRelationshipProfile):
         agent1_id: str,
         agent2_id: str,
         relationship: RelationshipType,
-        background_story: str = None,
-    ):
+        background_story: str | None = None,
+    ) -> None:
         """Set personalized relationship between two agents"""
         # Ensure agents are in the list
         if agent1_id not in self.agent_ids:
@@ -203,7 +203,7 @@ class FineGrainedRelationshipProfile(BaseRelationshipProfile):
 
     def get_relationship_matrix(self) -> dict[str, dict[str, RelationshipType]]:
         """Get relationship matrix for visualization and analysis"""
-        matrix = {}
+        matrix: dict[str, dict[str, RelationshipType]] = {}
         for agent1 in self.agent_ids:
             matrix[agent1] = {}
             for agent2 in self.agent_ids:

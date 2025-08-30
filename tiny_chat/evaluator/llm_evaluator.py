@@ -13,17 +13,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-T_eval_dim = TypeVar('T_eval_dim', bound=BaseModel)
+T_eval_dim = TypeVar("T_eval_dim", bound=BaseModel)
 
 
-def _create_default_evaluator_model_provider() -> 'BaseModelProvider':
+def _create_default_evaluator_model_provider() -> "BaseModelProvider":
     """Create a default model provider for evaluation using gpt-4o-mini"""
     from tiny_chat.config import ModelProviderConfig
     from tiny_chat.providers import ModelProviderFactory
 
     default_config = ModelProviderConfig(
-        name='gpt-4o-mini',
-        type='openai',
+        name="gpt-4o-mini",
+        type="openai",
         temperature=0.0,  # Use 0.0 for evaluations for consistency
     )
     return ModelProviderFactory.create_provider(default_config)
@@ -32,39 +32,41 @@ def _create_default_evaluator_model_provider() -> 'BaseModelProvider':
 class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
     def __init__(
         self,
-        config: dict[str, Any] = None,
-        model_provider: 'BaseModelProvider | None' = None,
+        config: dict[str, Any] | None = None,
+        model_provider: "BaseModelProvider | None" = None,
         response_format_class: type[T_eval_dim] | None = None,
     ) -> None:
         if config is not None:
             super().__init__(config)
             self._model_provider = (
-                config.get('model_provider', model_provider)
+                config.get("model_provider", model_provider)
                 or _create_default_evaluator_model_provider()
             )
             self.response_format_class = (
-                config.get('response_format_class', response_format_class)
-                or SotopiaDimensions  # type: ignore
+                config.get("response_format_class", response_format_class)
+                or SotopiaDimensions
             )
         else:
             super().__init__({})
             self._model_provider = (
                 model_provider or _create_default_evaluator_model_provider()
             )
-            self.response_format_class = response_format_class or SotopiaDimensions  # type: ignore
-        self.prompt = ''
+            self.response_format_class = response_format_class or SotopiaDimensions
+        self.prompt = ""
 
     @property
     def evaluator_type(self) -> str:
-        return 'llm'
+        return "llm"
 
     def _build_evaluation_prompt(self, history: str) -> str:
         from tiny_chat.providers.output_parsers import PydanticOutputParser
 
         from .utils import EvaluationForMultipleAgents
 
-        EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]
-        output_parser = PydanticOutputParser(pydantic_object=EvaluationClass)
+        EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]  # type: ignore[name-defined]
+        output_parser: PydanticOutputParser[EvaluationClass] = PydanticOutputParser(
+            pydantic_object=EvaluationClass
+        )
         format_instructions = output_parser.get_format_instructions()
 
         return f"""{history}
@@ -83,19 +85,19 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
     """
 
     def _process_evaluation_response(
-        self, response: any, agent_names: list[str]
+        self, response: Any, agent_names: list[str]
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         response_list: list[tuple[str, tuple[tuple[str, int | float | bool], str]]] = []
 
         for agent_name in agent_names:
             if (
-                hasattr(response, 'agent_evaluations')
+                hasattr(response, "agent_evaluations")
                 and agent_name in response.agent_evaluations
             ):
                 agent_eval = response.agent_evaluations[agent_name]
                 eval_dict = (
                     agent_eval.dict()
-                    if hasattr(agent_eval, 'dict')
+                    if hasattr(agent_eval, "dict")
                     else agent_eval.__dict__
                 )
                 for dimension, value in eval_dict.items():
@@ -103,7 +105,7 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
                         reasoning, score = value[0], value[1]
                     else:
                         score = value
-                        reasoning = f'Score for {dimension}'
+                        reasoning = f"Score for {dimension}"
                     response_list.append((agent_name, ((dimension, score), reasoning)))
         return response_list
 
@@ -112,31 +114,31 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         history_parts: list[str] = []
         for sender, msg in messages:
-            if 'did nothing' in msg.to_natural_language():
+            if "did nothing" in msg.to_natural_language():
                 continue
-            if sender == 'Environment':
+            if sender == "Environment":
                 history_parts.append(msg.to_natural_language())
             else:
-                history_parts.append(f'{sender} {msg.to_natural_language()}')
-        history = '\n'.join(history_parts).strip()
+                history_parts.append(f"{sender} {msg.to_natural_language()}")
+        history = "\n".join(history_parts).strip()
 
         if not history:
             return []
         agent_names: list[str] = []
         for sender, _ in messages:
-            if sender != 'Environment' and sender not in agent_names:
+            if sender != "Environment" and sender not in agent_names:
                 agent_names.append(sender)
 
         from tiny_chat.providers.output_parsers import PydanticOutputParser
 
         from .utils import EvaluationForMultipleAgents
 
-        EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]
+        EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]  # type: ignore[name-defined]
 
         try:
             prompt = self._build_evaluation_prompt(history)
 
-            output_parser = PydanticOutputParser(pydantic_object=EvaluationClass)
+            output_parser = PydanticOutputParser(pydantic_object=EvaluationClass)  # type: ignore[var-annotated]
 
             response = self._model_provider.sync_generate_with_parser(
                 prompt=prompt,
@@ -148,7 +150,7 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
             return response_list
 
         except Exception as e:
-            logger.debug(f'[red] Sync LLM evaluation failed: {e}')
+            logger.debug(f"[red] Sync LLM evaluation failed: {e}")
             return []
 
     @validate_call
@@ -156,7 +158,7 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
         self,
         turn_number: int,
         messages: list[tuple[str, Message]] | None,
-        history: str = '',
+        history: str = "",
         temperature: float = 0.0,
     ) -> list[tuple[str, tuple[tuple[str, int | float | bool], str]]]:
         # filter did nothing
@@ -164,13 +166,13 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
             messages_filtered = [
                 (x, y)
                 for x, y in messages
-                if 'did nothing' not in y.to_natural_language()
+                if "did nothing" not in y.to_natural_language()
             ]
-            history = '\n'.join(
+            history = "\n".join(
                 [
                     (
-                        f'{x} {y.to_natural_language()}'
-                        if x != 'Environment'
+                        f"{x} {y.to_natural_language()}"
+                        if x != "Environment"
                         else y.to_natural_language()
                     )
                     for x, y in messages_filtered
@@ -178,14 +180,14 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
             )
 
         if not history.strip():
-            logger.debug('No conversation history available for evaluation')
+            logger.debug("No conversation history available for evaluation")
             return []
 
         try:
             agent_names = []
             if messages:
                 for sender, _ in messages:
-                    if sender != 'Environment' and sender not in agent_names:
+                    if sender != "Environment" and sender not in agent_names:
                         agent_names.append(sender)
             prompt = self._build_evaluation_prompt(history)
 
@@ -193,10 +195,10 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
 
             from .utils import EvaluationForMultipleAgents
 
-            EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]
-            output_parser = PydanticOutputParser(pydantic_object=EvaluationClass)
+            EvaluationClass = EvaluationForMultipleAgents[self.response_format_class]  # type: ignore[name-defined]
+            output_parser = PydanticOutputParser(pydantic_object=EvaluationClass)  # type: ignore[var-annotated]
 
-            if hasattr(self._model_provider, 'agenerate_evaluation'):
+            if hasattr(self._model_provider, "agenerate_evaluation"):
                 response = await self._model_provider.agenerate_evaluation(
                     history=history,
                     evaluation_class=EvaluationClass,
@@ -209,7 +211,7 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
                 response = await agenerate(
                     model_name=effective_model_name,
                     template=prompt,
-                    input_values={'history': history},
+                    input_values={"history": history},
                     output_parser=output_parser,
                     temperature=temperature,
                 )
@@ -217,8 +219,8 @@ class LLMEvaluator(BaseEvaluator, Generic[T_eval_dim]):
             return self._process_evaluation_response(response, agent_names)
 
         except Exception as e:
-            logger.debug(f'[red] Failed to generate environment response. {e}')
+            logger.debug(f"[red] Failed to generate environment response. {e}")
             return []
 
-    def get_terminal_evaluator(self):
+    def get_terminal_evaluator(self) -> "LLMEvaluator[T_eval_dim]":
         return self

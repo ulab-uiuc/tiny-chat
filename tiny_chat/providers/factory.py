@@ -1,13 +1,13 @@
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    pass
+
 from tiny_chat.config import ModelProviderConfig
 
 from .base import BaseModelProvider
 from .litellm_provider import LiteLLMProvider
 from .workflow_provider import WorkflowProvider
-
-if TYPE_CHECKING:
-    from typing import type
 
 
 class ModelProviderFactory:

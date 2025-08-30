@@ -38,7 +38,7 @@ LOG_COLORS: Mapping[str, ColorType] = {
 class ColoredFormatter(logging.Formatter):
     def format(self: logging.Formatter, record: logging.LogRecord) -> Any:
         msg_type = record.__dict__.get('msg_type', None)
-        if msg_type in LOG_COLORS:
+        if msg_type is not None and msg_type in LOG_COLORS:
             msg_type_color = colored(msg_type, LOG_COLORS[msg_type])
             msg = colored(record.msg, LOG_COLORS[msg_type])
             time_str = colored(
@@ -79,7 +79,6 @@ def get_file_handler(log_file_path: str = 'logs/tiny_chat.log') -> Any:
     """
     Returns a file handler for logging.
     """
-    # 确保日志目录存在
     log_dir = Path(log_file_path).parent
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -89,31 +88,18 @@ def get_file_handler(log_file_path: str = 'logs/tiny_chat.log') -> Any:
     return file_handler
 
 
-def setup_logging(log_file_path: str = None, log_level: str = 'INFO') -> None:
-    """
-    设置统一的日志配置
-    """
-    # 获取根logger
+def setup_logging(log_file_path: str | None = None, log_level: str = 'INFO') -> None:
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, log_level.upper()))
 
-    # 清除现有的handlers，避免重复
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    # 添加console handler
     root_logger.addHandler(get_console_handler())
 
-    # 如果指定了文件路径，添加文件handler
     if log_file_path:
         root_logger.addHandler(get_file_handler(log_file_path))
 
 
-# 创建tiny_chat专用的logger
 logger = logging.getLogger('tiny_chat')
 logger.setLevel(logging.DEBUG)
-# 不设置propagate=False，让日志可以向上传播到根logger
-# 这样所有子logger都能通过根logger输出日志
-
-# 不为tiny_chat logger添加重复的handler，避免重复输出
-# 让它通过根logger的handlers输出

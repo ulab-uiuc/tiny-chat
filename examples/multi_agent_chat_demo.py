@@ -4,7 +4,7 @@ from pathlib import Path
 from tiny_chat import ConfigManager, TinyChatBackground, TinyChatServer
 
 
-async def tiny_chat_demo_conversation():
+async def tiny_chat_demo_conversation() -> None:
     """Demonstrate conversation using Agents with different models"""
 
     print('\n\nTiny-Chat Conversation Demo')
@@ -74,7 +74,7 @@ async def tiny_chat_demo_conversation():
         print('This is expected if API keys are not set')
 
 
-async def main():
+async def main() -> None:
     """Run all demonstrations"""
     await tiny_chat_demo_conversation()
 

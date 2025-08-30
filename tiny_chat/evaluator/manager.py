@@ -13,10 +13,10 @@ class EvaluatorConfig:
     def __init__(
         self,
         type: str,
-        config: dict[str, Any] = None,
-        model: str = None,
+        config: dict[str, Any] | None = None,
+        model: str | None = None,
         enabled: bool = True,
-    ):
+    ) -> None:
         self.type = type
         self.config = config or {}
         self.model = model
@@ -24,26 +24,28 @@ class EvaluatorConfig:
 
 
 class EvaluatorManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self._evaluators: list[BaseEvaluator] = []
-        self._evaluator_registry = {}
+        self._evaluator_registry: dict[str, type[BaseEvaluator]] = {}
         self._register_builtin_evaluators()
 
-    def _register_builtin_evaluators(self):
+    def _register_builtin_evaluators(self) -> None:
         from .llm_evaluator import LLMEvaluator
         from .rule_based import RuleBasedEvaluator
 
         self._evaluator_registry['llm'] = LLMEvaluator
         self._evaluator_registry['rule_based'] = RuleBasedEvaluator
 
-    def register_evaluator(self, evaluator_type: str, evaluator_class: type) -> None:
+    def register_evaluator(
+        self, evaluator_type: str, evaluator_class: type[BaseEvaluator]
+    ) -> None:
         self._evaluator_registry[evaluator_type] = evaluator_class
         logger.info(f'Registered evaluator type: {evaluator_type}')
 
     def create_evaluator(
         self,
         config: EvaluatorConfig,
-        model_providers: dict[str, 'BaseModelProvider'] = None,
+        model_providers: dict[str, 'BaseModelProvider'] | None = None,
     ) -> BaseEvaluator | None:
         evaluator_class = self._evaluator_registry.get(config.type)
 
