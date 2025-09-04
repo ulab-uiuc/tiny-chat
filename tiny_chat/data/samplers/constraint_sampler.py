@@ -14,8 +14,8 @@ from tiny_chat.profiles import (
 from ..loader import DataLoader
 from .base_sampler import BaseSampler, EnvAgentCombo
 
-ObsType = TypeVar('ObsType')
-ActType = TypeVar('ActType')
+ObsType = TypeVar("ObsType")
+ActType = TypeVar("ActType")
 
 
 def _get_fit_agents_for_one_env(
@@ -35,7 +35,7 @@ def _get_fit_agents_for_one_env(
     ]
 
     age_constraint = env_profile.age_constraint
-    if age_constraint and age_constraint != '[(18, 70), (18, 70)]':
+    if age_constraint and age_constraint != "[(18, 70), (18, 70)]":
         try:
             age_constraint_list = ast.literal_eval(age_constraint)
             filtered_relationships = []
@@ -68,8 +68,8 @@ def _get_fit_agents_for_one_env(
 
     if len(available_relationships) < size:
         raise ValueError(
-            f'Number of available relationships ({len(available_relationships)}) '
-            f'is smaller than the required size ({size})'
+            f"Number of available relationships ({len(available_relationships)}) "
+            f"is smaller than the required size ({size})"
         )
 
     random.shuffle(available_relationships)
@@ -131,31 +131,31 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
         """
         assert (
             not isinstance(agent_classes, list) or len(agent_classes) == n_agent
-        ), f'agent_classes should be a list of length {n_agent} or a single agent class'
+        ), f"agent_classes should be a list of length {n_agent} or a single agent class"
 
         if not isinstance(agent_classes, list):
             agent_classes = [agent_classes] * n_agent
 
         assert (
             len(agents_params) == n_agent
-        ), f'agents_params should be a list of length {n_agent}'
+        ), f"agents_params should be a list of length {n_agent}"
 
         if self.env_candidates is None:
             env_candidates = self.data_loader.get_all_env_profiles()
             if not env_candidates:
-                raise ValueError('No environment candidates available for sampling.')
+                raise ValueError("No environment candidates available for sampling.")
             self.env_candidates = env_candidates
 
         if self.agent_candidates is None:
             agent_candidates = self.data_loader.get_all_agent_profiles()
             if not agent_candidates:
-                raise ValueError('No agent candidates available for sampling.')
+                raise ValueError("No agent candidates available for sampling.")
             self.agent_candidates = agent_candidates
 
         if self.relationship_candidates is None:
             relationship_candidates = self.data_loader.get_all_relationship_profiles()
             if not relationship_candidates:
-                raise ValueError('No relationship candidates available for sampling.')
+                raise ValueError("No relationship candidates available for sampling.")
             self.relationship_candidates = relationship_candidates
 
         env_profiles: list[BaseEnvironmentProfile] = []
@@ -163,14 +163,14 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
 
         if not replacement:
             assert len(self.env_candidates) == 1, (
-                'Sampling without replacement is only restricted to single env candidate. '
-                'This is due to the fact that the number of possible combinations of env and agents is huge. '
-                'Please sample for each env separately if you want to sample without replacement.'
+                "Sampling without replacement is only restricted to single env candidate. "
+                "This is due to the fact that the number of possible combinations of env and agents is huge. "
+                "Please sample for each env separately if you want to sample without replacement."
             )
 
             env_profile = self.env_candidates[0]
             if isinstance(env_profile, str):
-                raise NotImplementedError('String environment IDs not yet supported')
+                raise NotImplementedError("String environment IDs not yet supported")
 
             agents_which_fit_scenario = _get_fit_agents_for_one_env(
                 env_profile, self.agent_candidates, self.relationship_candidates, size
@@ -182,7 +182,7 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
                 env_profile = random.choice(self.env_candidates)
                 if isinstance(env_profile, str):
                     raise NotImplementedError(
-                        'String environment IDs not yet supported'
+                        "String environment IDs not yet supported"
                     )
 
                 env_profiles.append(env_profile)
@@ -191,10 +191,10 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
                 )
                 agent_profiles_list.append(agents_which_fit_scenario[0])
 
-        assert len(env_profiles) == size, 'Number of env_profiles is not equal to size'
+        assert len(env_profiles) == size, "Number of env_profiles is not equal to size"
         assert (
             len(agent_profiles_list) == size
-        ), 'Number of agent_profiles_list is not equal to size'
+        ), "Number of agent_profiles_list is not equal to size"
 
         for env_profile, agent_profile_list in zip(
             env_profiles, agent_profiles_list, strict=False
@@ -208,13 +208,13 @@ class ConstraintBasedSampler(BaseSampler[ObsType, ActType]):
                 )
             ]
 
-            if hasattr(env_profile, 'agent_goals') and env_profile.agent_goals:
+            if hasattr(env_profile, "agent_goals") and env_profile.agent_goals:
                 for agent, goal in zip(agents, env_profile.agent_goals, strict=False):
                     agent.goal = goal
             else:
                 for i, agent in enumerate(agents):
                     agent.goal = (
-                        f'Participate effectively in this conversation as agent {i+1}'
+                        f"Participate effectively in this conversation as agent {i+1}"
                     )
 
             yield env, agents

@@ -4,18 +4,18 @@ from .relationship_profile import RelationshipType
 
 
 class BaseEnvironmentProfile(BaseModel):
-    model_config = {'extra': 'allow'}
-    pk: str | None = Field(default='')
+    model_config = {"extra": "allow"}
+    pk: str | None = Field(default="")
     codename: str = Field(
-        default='',
-        description='The codename of the environment',
+        default="",
+        description="The codename of the environment",
     )
     source: str = Field(
-        default='',
-        description='The source of the environment',
+        default="",
+        description="The source of the environment",
     )
     scenario: str = Field(
-        description='A concrete scenario of where the social interaction takes place, the scenario should have two agents (agent1 and agent2), and you should illustrate the relationship between the two agents, and for what purpose agent1 is interacting with agent2. Please avoid mentioning specific names and occupations in the scenario and keep all the mentions gender-neutral. Also avoid generating scenarios that requires childrend (below 18) or elderly (above 70) to be involved.',
+        description="A concrete scenario of where the social interaction takes place, the scenario should have two agents (agent1 and agent2), and you should illustrate the relationship between the two agents, and for what purpose agent1 is interacting with agent2. Please avoid mentioning specific names and occupations in the scenario and keep all the mentions gender-neutral. Also avoid generating scenarios that requires childrend (below 18) or elderly (above 70) to be involved.",
     )
     agent_goals: list[str] = Field(
         default_factory=list,
@@ -23,7 +23,7 @@ class BaseEnvironmentProfile(BaseModel):
     )
     relationship: RelationshipType = Field(
         default=RelationshipType.stranger,
-        description='The relationship between the two agents, choose from: stranger, know_by_name, acquaintance, friend, romantic_relationship, family_member. Do not make up a relationship, but choose from the list, 0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member',
+        description="The relationship between the two agents, choose from: stranger, know_by_name, acquaintance, friend, romantic_relationship, family_member. Do not make up a relationship, but choose from the list, 0 means stranger, 1 means know_by_name, 2 means acquaintance, 3 means friend, 4 means romantic_relationship, 5 means family_member",
     )
     age_constraint: str | None = Field(
         default=None,
@@ -37,6 +37,6 @@ class BaseEnvironmentProfile(BaseModel):
         default=None,
     )
     tag: str = Field(
-        default='',
-        description='The tag of the environment, used for searching, could be convenient to document environment profiles from different works and sources',
+        default="",
+        description="The tag of the environment, used for searching, could be convenient to document environment profiles from different works and sources",
     )

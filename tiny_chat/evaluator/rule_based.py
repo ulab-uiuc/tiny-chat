@@ -21,9 +21,9 @@ class RuleBasedEvaluator(BaseEvaluator):
     ) -> None:
         if config is not None:
             super().__init__(config)
-            self.max_turn_number = config.get('max_turn_number', max_turn_number)
-            self.max_stale_turn = config.get('max_stale_turn', max_stale_turn)
-            self.leave_detector = config.get('leave_detector', leave_detector)
+            self.max_turn_number = config.get("max_turn_number", max_turn_number)
+            self.max_stale_turn = config.get("max_stale_turn", max_stale_turn)
+            self.leave_detector = config.get("leave_detector", leave_detector)
         else:
             super().__init__({})
             self.max_turn_number = max_turn_number
@@ -32,7 +32,7 @@ class RuleBasedEvaluator(BaseEvaluator):
 
     @property
     def evaluator_type(self) -> str:
-        return 'rule_based'
+        return "rule_based"
 
     @validate_call
     def __call__(
@@ -46,18 +46,18 @@ class RuleBasedEvaluator(BaseEvaluator):
         else:
             someone_leaving = False
             for source, msg in messages[::-1]:
-                if source == 'Environment':
+                if source == "Environment":
                     continue
-                if isinstance(msg, AgentAction) and msg.action_type == 'leave':
+                if isinstance(msg, AgentAction) and msg.action_type == "leave":
                     someone_leaving = True
                     break
         # Rule 3: If the conversation is stale for too long, terminate the conversation
         stale_count = 0
         for message in messages[::-1]:
-            if message[0] == 'Environment':
+            if message[0] == "Environment":
                 continue
             assert isinstance(message[1], AgentAction)
-            if message[1].action_type == 'none':
+            if message[1].action_type == "none":
                 stale_count += 1
             else:
                 break
@@ -72,8 +72,8 @@ class RuleBasedEvaluator(BaseEvaluator):
         )
         return [
             (
-                'environment',
-                (('terminated', terminated), reasons_for_termination),
+                "environment",
+                (("terminated", terminated), reasons_for_termination),
             )
         ]
 

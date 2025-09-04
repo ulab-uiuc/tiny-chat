@@ -18,24 +18,24 @@ from tiny_chat.messages import (
 
 from .base import BaseChatEnivronment
 
-TBackground = TypeVar('TBackground', bound=ScriptBackground)
+TBackground = TypeVar("TBackground", bound=ScriptBackground)
 
 DEFAULT_ACTION_TYPES: set[ActionType] = {
-    'none',
-    'speak',
-    'non-verbal communication',
-    'action',
-    'leave',
+    "none",
+    "speak",
+    "non-verbal communication",
+    "action",
+    "leave",
 }
 
 
 def _actions_to_natural_language(actions: dict[str, AgentAction]) -> str:
-    action_str = ''
+    action_str = ""
     for agent, action in actions.items():
-        if action.action_type != 'none':
-            if action_str != '':
-                action_str += ';'
-            action_str += f'{agent} {action.to_natural_language()}'
+        if action.action_type != "none":
+            if action_str != "":
+                action_str += ";"
+            action_str += f"{agent} {action.to_natural_language()}"
     return action_str
 
 
@@ -44,14 +44,14 @@ class TinyChatEnvironment(BaseChatEnivronment):
         self,
         available_action_types: set[ActionType] = DEFAULT_ACTION_TYPES,
         action_order: Literal[
-            'simultaneous', 'round-robin', 'sequential', 'random', 'agent_id_based'
-        ] = 'simultaneous',
+            "simultaneous", "round-robin", "sequential", "random", "agent_id_based"
+        ] = "simultaneous",
         evaluators: list[BaseEvaluator] | None = None,
-        model_name: str = 'gpt-4o-mini',
+        model_name: str = "gpt-4o-mini",
         terminal_evaluators: list[BaseEvaluator] | None = None,
         max_turns: int = 20,
         speaking_order: list[int] | None = None,
-        obs_mode: Literal['all', 'local'] = 'all',
+        obs_mode: Literal["all", "local"] = "all",
         neighbor_map: dict[str, list[str]] | None = None,
         local_k: int = 5,
     ) -> None:
@@ -106,28 +106,28 @@ class TinyChatEnvironment(BaseChatEnivronment):
         self.reset_inbox()
 
         if agents is None or not agents:
-            raise ValueError('agents must be provided')
+            raise ValueError("agents must be provided")
 
         self.agents = list(agents.values())
         self.agent_names = list(agents.keys())
         self._omniscient = bool(omniscient)
 
-        if self.action_order == 'agent_id_based':
+        if self.action_order == "agent_id_based":
             self._sort_agents_by_speaking_order(agents)
 
         self._setup_unified_background(agents, options, omniscient, lite)
 
         self.action_spaces = {
             agent: {
-                'action_type': list(range(len(self.available_action_types))),
-                'argument': str,
+                "action_type": list(range(len(self.available_action_types))),
+                "argument": str,
             }
             for agent in self.agent_names
         }
 
         self._update_action_mask()
 
-        self.recv_message('Environment', self.env_background or self.background)  # type: ignore
+        self.recv_message("Environment", self.env_background or self.background)  # type: ignore
 
         initial_obs = {}
         for i, agent_name in enumerate(self.agent_names):
@@ -140,12 +140,12 @@ class TinyChatEnvironment(BaseChatEnivronment):
                     agent_name, omniscient=False
                 )
             initial_obs[agent_name] = Observation(
-                last_turn=bg_for_agent.to_natural_language() if bg_for_agent else '',
+                last_turn=bg_for_agent.to_natural_language() if bg_for_agent else "",
                 turn_number=0,
                 available_actions=(
                     list(self.available_action_types)
                     if i < len(self.action_mask) and self.action_mask[i]
-                    else ['none']
+                    else ["none"]
                 ),
             )
 
@@ -160,13 +160,13 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         temp_id_counter = len(self.speaking_order)
         for _agent_name, agent in agent_items:
-            if not hasattr(agent, 'speaking_id'):
+            if not hasattr(agent, "speaking_id"):
                 agent.speaking_id = temp_id_counter
                 temp_id_counter += 1
 
         def get_speaking_order(item: tuple[str, Any]) -> int:
             agent_name, agent = item
-            if hasattr(agent, 'speaking_id'):
+            if hasattr(agent, "speaking_id"):
                 agent_id = agent.speaking_id
                 try:
                     return (
@@ -198,9 +198,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
         agent_configs = []
 
         for agent_name, agent in agents.items():
-            config = {'name': agent_name}
+            config = {"name": agent_name}
 
-            if hasattr(agent, 'speaking_id'):
+            if hasattr(agent, "speaking_id"):
                 agent_id = agent.speaking_id
             else:
                 agent_id = (
@@ -208,46 +208,46 @@ class TinyChatEnvironment(BaseChatEnivronment):
                 )
 
             if not lite:
-                if hasattr(agent, 'profile'):
+                if hasattr(agent, "profile"):
                     profile = agent.profile
-                    if hasattr(profile, 'to_background_string'):
-                        config['background'] = profile.to_background_string(agent_id)
-                    elif hasattr(profile, 'description'):
-                        config['background'] = (
-                            f"<root><p viewer='agent_{agent_id}'>{profile.description}</p></root>"
-                        )
-                elif hasattr(agent, 'description'):
-                    config['background'] = (
-                        f"<root><p viewer='agent_{agent_id}'>{agent.description}</p></root>"
-                    )
+                    if hasattr(profile, "to_background_string"):
+                        config["background"] = profile.to_background_string(agent_id)
+                    elif hasattr(profile, "description"):
+                        config[
+                            "background"
+                        ] = f"<root><p viewer='agent_{agent_id}'>{profile.description}</p></root>"
+                elif hasattr(agent, "description"):
+                    config[
+                        "background"
+                    ] = f"<root><p viewer='agent_{agent_id}'>{agent.description}</p></root>"
                 else:
-                    config['background'] = (
-                        f"<root><p viewer='agent_{agent_id}'>Agent {agent_id}</p></root>"
-                    )
+                    config[
+                        "background"
+                    ] = f"<root><p viewer='agent_{agent_id}'>Agent {agent_id}</p></root>"
             else:
-                config['background'] = ''
+                config["background"] = ""
 
-            if hasattr(agent, 'goal'):
-                config['goal'] = f"<root viewer='agent_{agent_id}'>{agent.goal}</root>"
+            if hasattr(agent, "goal"):
+                config["goal"] = f"<root viewer='agent_{agent_id}'>{agent.goal}</root>"
             else:
-                config['goal'] = (
-                    f"<root viewer='agent_{agent_id}'>Achieve your objectives in this conversation</root>"
-                )
+                config[
+                    "goal"
+                ] = f"<root viewer='agent_{agent_id}'>Achieve your objectives in this conversation</root>"
 
             agent_configs.append(config)
 
         num_agents = len(agents)
         if num_agents == 2:
             scenario = (
-                options.get('scenario', 'A conversation between two agents')
+                options.get("scenario", "A conversation between two agents")
                 if options
-                else 'A conversation between two agents'
+                else "A conversation between two agents"
             )
         else:
             scenario = (
-                options.get('scenario', f'A conversation between {num_agents} agents')
+                options.get("scenario", f"A conversation between {num_agents} agents")
                 if options
-                else f'A conversation between {num_agents} agents'
+                else f"A conversation between {num_agents} agents"
             )
 
         self.env_background = TinyChatBackground(
@@ -262,18 +262,18 @@ class TinyChatEnvironment(BaseChatEnivronment):
             self.action_mask = []
             return
 
-        if self.action_order == 'simultaneous':
+        if self.action_order == "simultaneous":
             self.action_mask = [True for _ in self.agent_names]
-        elif self.action_order == 'round-robin':
+        elif self.action_order == "round-robin":
             self.action_mask = [False for _ in self.agent_names]
             self.action_mask[self.turn_number % len(self.action_mask)] = True
-        elif self.action_order == 'sequential':
+        elif self.action_order == "sequential":
             self.action_mask = [False for _ in self.agent_names]
             self.action_mask[self.current_agent_index] = True
-        elif self.action_order == 'random':
+        elif self.action_order == "random":
             self.action_mask = [False for _ in self.agent_names]
             self.action_mask[random.randint(0, len(self.action_mask) - 1)] = True
-        elif self.action_order == 'agent_id_based':
+        elif self.action_order == "agent_id_based":
             self.action_mask = [True for _ in self.agent_names]
 
     def get_turn_number(self) -> int:
@@ -287,9 +287,9 @@ class TinyChatEnvironment(BaseChatEnivronment):
     def get_observation(self, agent_name: str) -> Observation:
         """Get the current observation for a specific agent."""
         if agent_name not in self.agent_names:
-            raise ValueError(f'Agent {agent_name} not found in environment')
+            raise ValueError(f"Agent {agent_name} not found in environment")
 
-        last_turn = ''
+        last_turn = ""
         if self.inbox and self.turn_number > 0:
             last_turn = self._last_turn_text_for(agent_name)
         else:
@@ -309,7 +309,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         available_actions = (
             list(self.available_action_types)
             if agent_index < len(self.action_mask) and self.action_mask[agent_index]
-            else ['none']
+            else ["none"]
         )
 
         return Observation(
@@ -349,7 +349,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         rewards = self._build_rewards(response)
         truncated = dict.fromkeys(self.agent_names, False)
         terminated_flag = self.is_terminated() or bool(
-            getattr(response, 'terminated', False)
+            getattr(response, "terminated", False)
         )
         terminated_dict = dict.fromkeys(self.agent_names, terminated_flag)
         info = self._build_info(response)
@@ -382,7 +382,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         rewards = self._build_rewards(response)
         truncated = dict.fromkeys(self.agent_names, False)
         terminated_flag = self.is_terminated() or bool(
-            getattr(response, 'terminated', False)
+            getattr(response, "terminated", False)
         )
         terminated_dict = dict.fromkeys(self.agent_names, terminated_flag)
         info = self._build_info(response)
@@ -399,15 +399,15 @@ class TinyChatEnvironment(BaseChatEnivronment):
             if isinstance(action, AgentAction):
                 complied_actions[key] = action
             else:
-                action['action_type'] = self.available_action_types[
-                    int(action['action_type'])
+                action["action_type"] = self.available_action_types[
+                    int(action["action_type"])
                 ]
                 complied_actions[key] = AgentAction.parse_obj(action)
 
         for agent_name in self.agent_names:
             if agent_name not in complied_actions:
                 complied_actions[agent_name] = AgentAction(
-                    action_type='none', argument=''
+                    action_type="none", argument=""
                 )
         return complied_actions
 
@@ -415,19 +415,19 @@ class TinyChatEnvironment(BaseChatEnivronment):
         """Mask actions for agents that are not in turn."""
         for idx, agent in enumerate(self.agent_names):
             if not self.action_mask[idx]:
-                actions[agent] = AgentAction(action_type='none', argument='')
+                actions[agent] = AgentAction(action_type="none", argument="")
 
     def _record_turn_messages(self, complied_actions: dict[str, AgentAction]) -> None:
         """Record turn messages and actions."""
         self.recv_message(
-            'Environment', SimpleMessage(message=f'Turn #{self.turn_number}')
+            "Environment", SimpleMessage(message=f"Turn #{self.turn_number}")
         )
         for agent, action in complied_actions.items():
             self.recv_message(agent, action)
 
     def _update_state(self) -> None:
         """Update environment state."""
-        if self.action_order == 'sequential':
+        if self.action_order == "sequential":
             self.current_agent_index = (self.current_agent_index + 1) % len(
                 self.agent_names
             )
@@ -458,7 +458,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
                 available_actions=(
                     list(self.available_action_types)
                     if i < len(self.action_mask) and self.action_mask[i]
-                    else ['none']
+                    else ["none"]
                 ),
             )
         return observations
@@ -507,7 +507,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         evaluator_results = []
         for evaluator in self.evaluators:
-            if hasattr(evaluator, '__acall__'):
+            if hasattr(evaluator, "__acall__"):
                 result = await evaluator.__acall__(
                     turn_number=self.turn_number,
                     messages=self.inbox,
@@ -527,7 +527,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         if response and response.terminated and self.terminal_evaluators:
             terminal_results = []
             for evaluator in self.terminal_evaluators:
-                if hasattr(evaluator, '__acall__'):
+                if hasattr(evaluator, "__acall__"):
                     result = await evaluator.__acall__(
                         turn_number=self.turn_number,
                         messages=self.inbox,
@@ -550,10 +550,10 @@ class TinyChatEnvironment(BaseChatEnivronment):
     def _merge_terminal_response(self, response: Any, terminal_response: Any) -> None:
         """Helper method to merge terminal response into main response."""
         if (
-            hasattr(terminal_response, 'per_agent_scores')
+            hasattr(terminal_response, "per_agent_scores")
             and terminal_response.per_agent_scores
         ):
-            if not hasattr(response, 'per_agent_scores'):
+            if not hasattr(response, "per_agent_scores"):
                 response.per_agent_scores = {}
             for agent_name, agent_score in terminal_response.per_agent_scores.items():
                 if agent_name not in response.per_agent_scores:
@@ -570,7 +570,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
 
         if (
             response
-            and hasattr(response, 'per_agent_scores')
+            and hasattr(response, "per_agent_scores")
             and response.per_agent_scores
         ):
             for agent_name in self.agent_names:
@@ -593,7 +593,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
                 agent_score = 0.0
                 agent_details = {}
 
-                if hasattr(response, 'per_agent_scores') and response.per_agent_scores:
+                if hasattr(response, "per_agent_scores") and response.per_agent_scores:
                     if agent_name in response.per_agent_scores:
                         score_data = response.per_agent_scores[agent_name]
                         if isinstance(score_data, tuple) and len(score_data) >= 2:
@@ -605,14 +605,14 @@ class TinyChatEnvironment(BaseChatEnivronment):
                             agent_score = score_data
 
                 info[agent_name] = {
-                    'comments': response.comments or '',
-                    'complete_rating': agent_score,
-                    'detailed_scores': agent_details,
+                    "comments": response.comments or "",
+                    "complete_rating": agent_score,
+                    "detailed_scores": agent_details,
                 }
 
             if response.terminated and self.terminal_evaluators:
-                info['rewards_prompt'] = {
-                    'overall_prompt': self.terminal_evaluators[0].prompt  # type: ignore
+                info["rewards_prompt"] = {
+                    "overall_prompt": self.terminal_evaluators[0].prompt  # type: ignore
                 }
 
         return info
@@ -620,7 +620,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
     def evaluate_episode_sync(self) -> dict[str, Any]:
         """Evaluate the episode using terminal evaluators (synchronous version)."""
         if not self.terminal_evaluators:
-            return {'message': 'No terminal evaluators available'}
+            return {"message": "No terminal evaluators available"}
 
         try:
             response = unweighted_aggregate_evaluate(
@@ -638,29 +638,29 @@ class TinyChatEnvironment(BaseChatEnivronment):
             )
 
             result = {
-                'terminated': response.terminated,
-                'comments': response.comments or '',
+                "terminated": response.terminated,
+                "comments": response.comments or "",
             }
 
-            if hasattr(response, 'per_agent_scores') and response.per_agent_scores:
+            if hasattr(response, "per_agent_scores") and response.per_agent_scores:
                 for agent_name in self.agent_names:
                     if agent_name in response.per_agent_scores:
                         score_data = response.per_agent_scores[agent_name]
                         if isinstance(score_data, tuple) and len(score_data) >= 2:
-                            result[f'{agent_name}_score'] = score_data[0]
+                            result[f"{agent_name}_score"] = score_data[0]
                             if isinstance(score_data[1], dict):
-                                result[f'{agent_name}_details'] = score_data[1]
+                                result[f"{agent_name}_details"] = score_data[1]
                         elif isinstance(score_data, int | float):
-                            result[f'{agent_name}_score'] = score_data
+                            result[f"{agent_name}_score"] = score_data
 
             return result
         except Exception as e:
-            return {'message': f'Evaluation failed: {str(e)}'}
+            return {"message": f"Evaluation failed: {str(e)}"}
 
     async def evaluate_episode(self) -> dict[str, Any]:
         """Evaluate the episode using terminal evaluators (asynchronous version)."""
         if not self.terminal_evaluators:
-            return {'message': 'No terminal evaluators available'}
+            return {"message": "No terminal evaluators available"}
 
         try:
             response = unweighted_aggregate_evaluate(
@@ -680,50 +680,50 @@ class TinyChatEnvironment(BaseChatEnivronment):
             )
 
             result = {
-                'terminated': response.terminated,
-                'comments': response.comments or '',
+                "terminated": response.terminated,
+                "comments": response.comments or "",
             }
 
-            if hasattr(response, 'per_agent_scores') and response.per_agent_scores:
+            if hasattr(response, "per_agent_scores") and response.per_agent_scores:
                 for agent_name in self.agent_names:
                     if agent_name in response.per_agent_scores:
                         score_data = response.per_agent_scores[agent_name]
                         if isinstance(score_data, tuple) and len(score_data) >= 2:
-                            result[f'{agent_name}_score'] = score_data[0]
+                            result[f"{agent_name}_score"] = score_data[0]
                             if isinstance(score_data[1], dict):
-                                result[f'{agent_name}_details'] = score_data[1]
+                                result[f"{agent_name}_details"] = score_data[1]
                         elif isinstance(score_data, int | float):
-                            result[f'{agent_name}_score'] = score_data
+                            result[f"{agent_name}_score"] = score_data
 
             return result
         except Exception as e:
-            return {'message': f'Evaluation failed: {str(e)}'}
+            return {"message": f"Evaluation failed: {str(e)}"}
 
     def get_conversation_summary(self) -> str:
         """Get a summary of the conversation."""
-        summary = 'TinyChat Conversation Summary\n'
-        summary += f'Total turns: {self.turn_number}\n'
+        summary = "TinyChat Conversation Summary\n"
+        summary += f"Total turns: {self.turn_number}\n"
         summary += f"Agents: {', '.join(self.agent_names)}\n"
-        summary += f'Action order: {self.action_order}\n\n'
+        summary += f"Action order: {self.action_order}\n\n"
 
         if self.inbox:
-            summary += 'Conversation history:\n'
+            summary += "Conversation history:\n"
             for source, message in self.inbox:
-                if source == 'Environment':
+                if source == "Environment":
                     continue
-                summary += f'{source}: {message.to_natural_language()}\n'
+                summary += f"{source}: {message.to_natural_language()}\n"
         return summary
 
-    def render(self, mode: str = 'human') -> None:
+    def render(self, mode: str = "human") -> None:
         """Render the current state of the environment."""
-        print(f'Turn {self.turn_number}')
+        print(f"Turn {self.turn_number}")
         print(
-            f'Active agents: {[name for i, name in enumerate(self.agent_names) if self.action_mask[i]]}'
+            f"Active agents: {[name for i, name in enumerate(self.agent_names) if self.action_mask[i]]}"
         )
         if self.inbox:
-            print('Recent messages:')
+            print("Recent messages:")
             for source, message in self.inbox[-5:]:
-                print(f'  {source}: {message.to_natural_language()}')
+                print(f"  {source}: {message.to_natural_language()}")
 
     def close(self) -> None:
         """Clean up resources."""
@@ -735,7 +735,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         - 'all'  : everyone
         - 'local': use neighbor_map if provided; otherwise ring neighbors by local_k
         """
-        if self.obs_mode != 'local':
+        if self.obs_mode != "local":
             vis = list(self.agent_names)
         else:
             if agent_name in self._neighbor_map:
@@ -756,7 +756,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
     def _last_turn_text_for(self, agent_name: str) -> str:
         """Compose the last-turn natural language, filtered by visible neighbors."""
         if not self.inbox:
-            return 'No recent actions'
+            return "No recent actions"
 
         last_actions: list[tuple[str, AgentAction]] = []
         for source, msg in reversed(self.inbox):
@@ -764,7 +764,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
                 last_actions.append((source, msg))
                 if len(last_actions) >= len(self.agent_names):
                     break
-            elif isinstance(msg, SimpleMessage) and msg.message.startswith('Turn #'):
+            elif isinstance(msg, SimpleMessage) and msg.message.startswith("Turn #"):
                 if last_actions:
                     break
 
@@ -772,7 +772,7 @@ class TinyChatEnvironment(BaseChatEnivronment):
         visible = set(self._get_visible_agents(agent_name))
         parts: list[str] = []
         for source, act in last_actions:
-            if source in visible and act.action_type != 'none':
-                parts.append(f'{source} {act.to_natural_language()}')
+            if source in visible and act.action_type != "none":
+                parts.append(f"{source} {act.to_natural_language()}")
 
-        return '; '.join(parts) if parts else 'No recent actions'
+        return "; ".join(parts) if parts else "No recent actions"

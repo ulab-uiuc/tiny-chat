@@ -33,40 +33,40 @@ class EvaluatorManager:
         from .llm_evaluator import LLMEvaluator
         from .rule_based import RuleBasedEvaluator
 
-        self._evaluator_registry['llm'] = LLMEvaluator
-        self._evaluator_registry['rule_based'] = RuleBasedEvaluator
+        self._evaluator_registry["llm"] = LLMEvaluator
+        self._evaluator_registry["rule_based"] = RuleBasedEvaluator
 
     def register_evaluator(
         self, evaluator_type: str, evaluator_class: type[BaseEvaluator]
     ) -> None:
         self._evaluator_registry[evaluator_type] = evaluator_class
-        logger.info(f'Registered evaluator type: {evaluator_type}')
+        logger.info(f"Registered evaluator type: {evaluator_type}")
 
     def create_evaluator(
         self,
         config: EvaluatorConfig,
-        model_providers: dict[str, 'BaseModelProvider'] | None = None,
+        model_providers: dict[str, "BaseModelProvider"] | None = None,
     ) -> BaseEvaluator | None:
         evaluator_class = self._evaluator_registry.get(config.type)
 
         if evaluator_class is None:
-            logger.warning(f'Unknown evaluator type: {config.type}')
+            logger.warning(f"Unknown evaluator type: {config.type}")
             return None
 
         try:
             evaluator_config = config.config.copy()
 
             if config.model and model_providers and config.model in model_providers:
-                evaluator_config['model_provider'] = model_providers[config.model]
+                evaluator_config["model_provider"] = model_providers[config.model]
 
             evaluator = evaluator_class(evaluator_config)
             self._evaluators.append(evaluator)
 
-            logger.info(f'Created evaluator: {config.type}')
+            logger.info(f"Created evaluator: {config.type}")
             return evaluator
 
         except Exception as e:
-            logger.error(f'Failed to create evaluator {config.type}: {e}')
+            logger.error(f"Failed to create evaluator {config.type}: {e}")
             return None
 
     def get_evaluators(self) -> list[BaseEvaluator]:
@@ -81,7 +81,7 @@ class EvaluatorManager:
 
     def clear_evaluators(self) -> None:
         self._evaluators.clear()
-        logger.info('Cleared all evaluators')
+        logger.info("Cleared all evaluators")
 
     def get_available_types(self) -> list[str]:
         return list(self._evaluator_registry.keys())

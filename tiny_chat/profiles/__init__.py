@@ -7,9 +7,9 @@ from .relationship_profile import (
 )
 
 __all__ = [
-    'BaseAgentProfile',
-    'BaseEnvironmentProfile',
-    'BaseRelationshipProfile',
-    'FineGrainedRelationshipProfile',
-    'RelationshipType',
+    "BaseAgentProfile",
+    "BaseEnvironmentProfile",
+    "BaseRelationshipProfile",
+    "FineGrainedRelationshipProfile",
+    "RelationshipType",
 ]

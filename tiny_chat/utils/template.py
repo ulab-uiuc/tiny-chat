@@ -5,7 +5,7 @@ from typing import Any
 
 # Default prompt templates
 DEFAULT_TEMPLATES = {
-    'BAD_OUTPUT_REFORMAT': """
+    "BAD_OUTPUT_REFORMAT": """
 Given the string that can not be parsed by json parser, reformat it to a string that can be parsed by json parser.
 Original string: {ill_formed_output}
 
@@ -13,19 +13,19 @@ Format instructions: {format_instructions}
 
 Please only generate the JSON:
 """,
-    'ENV_PROFILE': """Please generate scenarios and goals based on the examples below as well as the inspirational prompt, when creating the goals, try to find one point that both sides may not agree upon initially and need to collaboratively resolve it.
+    "ENV_PROFILE": """Please generate scenarios and goals based on the examples below as well as the inspirational prompt, when creating the goals, try to find one point that both sides may not agree upon initially and need to collaboratively resolve it.
 Examples:
 {examples}
 Inspirational prompt: {inspiration_prompt}
 Please use the following format:
 {format_instructions}
 """,
-    'RELATIONSHIP_PROFILE': """Please generate relationship between two agents based on the agents' profiles below. Note that you generate
+    "RELATIONSHIP_PROFILE": """Please generate relationship between two agents based on the agents' profiles below. Note that you generate
 {agent_profile}
 Please use the following format:
 {format_instructions}
 """,
-    'ACTION_SCRIPT': """
+    "ACTION_SCRIPT": """
 Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
 You can find {agent}'s background and goal in the 'Here is the context of the interaction' field.
 You should try your best to achieve {agent}'s goal in a way that align with their character traits.
@@ -39,7 +39,7 @@ Please only generate a JSON string including the action type and the argument.
 Your action should follow the given format:
 {format_instructions}
 """,
-    'ACTION_NORMAL': """
+    "ACTION_NORMAL": """
 Imagine you are {agent}, your task is to act/speak as {agent} would, keeping in mind {agent}'s social goal.
 You can find {agent}'s goal (or background) in the 'Here is the context of the interaction' field.
 Note that {agent}'s goal is only visible to you.
@@ -54,7 +54,7 @@ Please only generate a JSON string including the action type and the argument.
 Your action should follow the given format:
 {format_instructions}
 """,
-    'SCRIPT_SINGLE_STEP': """Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
+    "SCRIPT_SINGLE_STEP": """Now you are a famous playwright, your task is to continue writing one turn for agent {agent} under a given background and history to help {agent} reach social goal. Please continue the script based on the previous turns. You can only generate one turn at a time.
 
 Here are the conversation background and history:
 {background}
@@ -65,7 +65,7 @@ The output should only contain the script following the format instructions, wit
 
 Here are the format instructions:
 {format_instructions}""",
-    'SCRIPT_FULL': """
+    "SCRIPT_FULL": """
 Please write the script between two characters based on their social goals with a maximum of 20 turns.
 
 {background}
@@ -73,7 +73,7 @@ Your action should follow the given format:
 {format_instructions}
 Remember that you are an independent scriptwriter and should finish the script by yourself.
 The output should only contain the script following the format instructions, with no additional comments or text.""",
-    'INIT_PROFILE': """Please expand a fictional background for {name}. Here is the basic information:
+    "INIT_PROFILE": """Please expand a fictional background for {name}. Here is the basic information:
     {name}'s age: {age}
     {name}'s gender identity: {gender_identity}
     {name}'s pronouns: {pronoun}
@@ -88,13 +88,13 @@ The output should only contain the script following the format instructions, wit
     For the personality and values (e.g., MBTI, moral foundation, and etc.),
     remember to use examples and behaviors in the person's life to demonstrate it.
     """,
-    'FIRST_PERSON_NARRATIVE': """Please convert the following text into a first-person narrative.
+    "FIRST_PERSON_NARRATIVE": """Please convert the following text into a first-person narrative.
 e.g, replace name, he, she, him, her, his, and hers with I, me, my, and mine.
 {text}""",
-    'SECOND_PERSON_NARRATIVE': """Please convert the following text into a second-person narrative.
+    "SECOND_PERSON_NARRATIVE": """Please convert the following text into a second-person narrative.
 e.g, replace name, he, she, him, her, his, and hers with you, your, and yours.
 {text}""",
-    'GOAL': """Please generate your goal based on the background:
+    "GOAL": """Please generate your goal based on the background:
     {background}
     """,
 }
@@ -113,7 +113,7 @@ class TemplateManager:
             config_file: Configuration file path, if None uses default path
         """
         self.config_file = config_file or os.path.join(
-            os.path.expanduser('~'), '.tiny_chat', 'prompts.json'
+            os.path.expanduser("~"), ".tiny_chat", "prompts.json"
         )
         self.templates = DEFAULT_TEMPLATES.copy()
         self._load_custom_templates()
@@ -123,11 +123,11 @@ class TemplateManager:
         try:
             config_path = Path(self.config_file)
             if config_path.exists():
-                with open(config_path, encoding='utf-8') as f:
+                with open(config_path, encoding="utf-8") as f:
                     custom_templates = json.load(f)
                     self.templates.update(custom_templates)
         except Exception as e:
-            print(f'Warning: Unable to load custom prompt configuration: {e}')
+            print(f"Warning: Unable to load custom prompt configuration: {e}")
 
     def _save_custom_templates(self) -> None:
         """Save custom templates to configuration file"""
@@ -135,10 +135,10 @@ class TemplateManager:
             config_path = Path(self.config_file)
             config_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(config_path, 'w', encoding='utf-8') as f:
+            with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(self.templates, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f'Warning: Unable to save custom prompt configuration: {e}')
+            print(f"Warning: Unable to save custom prompt configuration: {e}")
 
     def get_template(self, template_name: str) -> str:
         """
@@ -268,11 +268,11 @@ class TemplateManager:
 
         template = self.templates[template_name]
         return {
-            'name': template_name,
-            'content': template,
-            'is_default': template_name in DEFAULT_TEMPLATES,
-            'length': len(template),
-            'placeholder_count': template.count('{'),
+            "name": template_name,
+            "content": template,
+            "is_default": template_name in DEFAULT_TEMPLATES,
+            "length": len(template),
+            "placeholder_count": template.count("{"),
         }
 
 
@@ -290,14 +290,14 @@ def format_template(template_name: str, **kwargs: Any) -> str:
 
 
 # Backward compatibility constants (but recommend using TemplateManager)
-BAD_OUTPUT_REFORMAT_TEMPLATE = DEFAULT_TEMPLATES['BAD_OUTPUT_REFORMAT']
-ENV_PROFILE_TEMPLATE = DEFAULT_TEMPLATES['ENV_PROFILE']
-RELATIONSHIP_PROFILE_TEMPLATE = DEFAULT_TEMPLATES['RELATIONSHIP_PROFILE']
-ACTION_SCRIPT_TEMPLATE = DEFAULT_TEMPLATES['ACTION_SCRIPT']
-ACTION_NORMAL_TEMPLATE = DEFAULT_TEMPLATES['ACTION_NORMAL']
-SCRIPT_SINGLE_STEP_TEMPLATE = DEFAULT_TEMPLATES['SCRIPT_SINGLE_STEP']
-SCRIPT_FULL_TEMPLATE = DEFAULT_TEMPLATES['SCRIPT_FULL']
-INIT_PROFILE_TEMPLATE = DEFAULT_TEMPLATES['INIT_PROFILE']
-FIRST_PERSON_NARRATIVE_TEMPLATE = DEFAULT_TEMPLATES['FIRST_PERSON_NARRATIVE']
-SECOND_PERSON_NARRATIVE_TEMPLATE = DEFAULT_TEMPLATES['SECOND_PERSON_NARRATIVE']
-GOAL_TEMPLATE = DEFAULT_TEMPLATES['GOAL']
+BAD_OUTPUT_REFORMAT_TEMPLATE = DEFAULT_TEMPLATES["BAD_OUTPUT_REFORMAT"]
+ENV_PROFILE_TEMPLATE = DEFAULT_TEMPLATES["ENV_PROFILE"]
+RELATIONSHIP_PROFILE_TEMPLATE = DEFAULT_TEMPLATES["RELATIONSHIP_PROFILE"]
+ACTION_SCRIPT_TEMPLATE = DEFAULT_TEMPLATES["ACTION_SCRIPT"]
+ACTION_NORMAL_TEMPLATE = DEFAULT_TEMPLATES["ACTION_NORMAL"]
+SCRIPT_SINGLE_STEP_TEMPLATE = DEFAULT_TEMPLATES["SCRIPT_SINGLE_STEP"]
+SCRIPT_FULL_TEMPLATE = DEFAULT_TEMPLATES["SCRIPT_FULL"]
+INIT_PROFILE_TEMPLATE = DEFAULT_TEMPLATES["INIT_PROFILE"]
+FIRST_PERSON_NARRATIVE_TEMPLATE = DEFAULT_TEMPLATES["FIRST_PERSON_NARRATIVE"]
+SECOND_PERSON_NARRATIVE_TEMPLATE = DEFAULT_TEMPLATES["SECOND_PERSON_NARRATIVE"]
+GOAL_TEMPLATE = DEFAULT_TEMPLATES["GOAL"]

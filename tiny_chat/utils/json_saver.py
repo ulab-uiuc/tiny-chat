@@ -9,7 +9,7 @@ def save_conversation_to_json(
     environment_profile: Any,
     conversation_history: Any,
     evaluation: Any,
-    output_dir: str = 'conversation_logs',
+    output_dir: str = "conversation_logs",
 ) -> None:
     """
     Save the conversation details to a JSON file.
@@ -26,14 +26,14 @@ def save_conversation_to_json(
 
     # Prepare the data to save
     data = {
-        'agent_profile': agent_profile if agent_profile is not None else {},
-        'environment_profile': (
-            environment_profile if environment_profile is not None else ''
+        "agent_profile": agent_profile if agent_profile is not None else {},
+        "environment_profile": (
+            environment_profile if environment_profile is not None else ""
         ),
-        'conversation_history': (
-            conversation_history if conversation_history is not None else ''
+        "conversation_history": (
+            conversation_history if conversation_history is not None else ""
         ),
-        'evaluation': evaluation if evaluation is not None else {},
+        "evaluation": evaluation if evaluation is not None else {},
     }
 
     # Generate a unique filename
@@ -41,7 +41,7 @@ def save_conversation_to_json(
     file_path = os.path.join(output_dir, filename)
 
     # Write the data to a JSON file
-    with open(file_path, 'w', encoding='utf-8') as json_file:
+    with open(file_path, "w", encoding="utf-8") as json_file:
         json.dump(data, json_file, ensure_ascii=False, indent=4)
 
-    print(f'Conversation saved to {file_path}')
+    print(f"Conversation saved to {file_path}")

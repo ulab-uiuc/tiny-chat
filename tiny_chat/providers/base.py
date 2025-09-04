@@ -66,7 +66,7 @@ class BaseModelProvider(ABC):
         model_name = self._get_agenerate_model_name()
         api_base, api_key, eff_model = self._prepare_model_config(model_name)
 
-        messages = [{'role': 'user', 'content': prompt}]
+        messages = [{"role": "user", "content": prompt}]
         try:
             resp = completion(
                 model=eff_model,
@@ -82,7 +82,7 @@ class BaseModelProvider(ABC):
             assert isinstance(text, str)
             return output_parser.parse(text)
         except Exception as e:
-            log.debug(f'[red] sync_generate_with_parser failed: {e}')
+            log.debug(f"[red] sync_generate_with_parser failed: {e}")
             raise
 
     async def agenerate_action(
@@ -174,7 +174,7 @@ class BaseModelProvider(ABC):
         return self.config.max_tokens
 
     def __str__(self) -> str:
-        return f'{self.__class__.__name__}({self.name})'
+        return f"{self.__class__.__name__}({self.name})"
 
     def __repr__(self) -> str:
         return self.__str__()
