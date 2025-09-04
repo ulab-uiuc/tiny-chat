@@ -2,8 +2,8 @@
 name = "tiny-chat"
 version = "0.0.1"
 description = "A simplified multi-agent chat system inspired by Sotopia"
-authors = ["Haofei Yu <yuhaofei44@gmail.com>"]
-license = "Apache 2.0 License"
+authors = ["Yining Zhao"]
+license = "MIT License"
 readme = "README.md"
 packages = [
     { include = "tiny_chat" }
