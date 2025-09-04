@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 INF = float(math.inf)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def api_calling_error_exponential_backoff(
@@ -23,8 +23,8 @@ def api_calling_error_exponential_backoff(
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            error_handler_mode = kwargs.get('mode', None)
-            if error_handler_mode == 'TEST':
+            error_handler_mode = kwargs.get("mode", None)
+            if error_handler_mode == "TEST":
                 modified_retries = 1
                 modified_base_wait_time = 1
             else:
@@ -37,8 +37,8 @@ def api_calling_error_exponential_backoff(
                     return func(*args, **kwargs)
                 except Exception as e:
                     wait_time = modified_base_wait_time * (2**attempts)
-                    print(f'Attempt {attempts + 1} failed: {e}')
-                    print(f'Waiting {wait_time} seconds before retrying...')
+                    print(f"Attempt {attempts + 1} failed: {e}")
+                    print(f"Waiting {wait_time} seconds before retrying...")
                     time.sleep(wait_time)
                     attempts += 1
             print(
@@ -73,12 +73,12 @@ def parsing_error_exponential_backoff(
                     return func(self, *args, **kwargs)
                 except Exception as e:
                     wait_time = base_wait_time * (2**attempts)
-                    print(f'Attempt {attempts + 1} failed: {e}')
-                    print(f'Waiting {wait_time} seconds before retrying...')
+                    print(f"Attempt {attempts + 1} failed: {e}")
+                    print(f"Waiting {wait_time} seconds before retrying...")
                     time.sleep(wait_time)
                     attempts += 1
             print(
-                f'Failed to get valid input from {func.__name__} after {retries} retries.'
+                f"Failed to get valid input from {func.__name__} after {retries} retries."
             )
             return None
 

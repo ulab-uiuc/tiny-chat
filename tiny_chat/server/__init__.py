@@ -1,12 +1,12 @@
 from .core import TinyChatServer
 
 __all__ = [
-    'TinyChatServer',
+    "TinyChatServer",
 ]
 
 try:
     from .api import app
 
-    __all__.append('app')
+    __all__.append("app")
 except ImportError:
     app = None

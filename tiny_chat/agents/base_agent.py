@@ -5,8 +5,8 @@ from typing import Any, Generic, TypeVar
 from tiny_chat.messages import MessengerMixin
 from tiny_chat.profiles import BaseAgentProfile
 
-ObsType = TypeVar('ObsType')
-ActType = TypeVar('ActType')
+ObsType = TypeVar("ObsType")
+ActType = TypeVar("ActType")
 
 
 class BaseAgent(Generic[ObsType, ActType], MessengerMixin, ABC):
@@ -21,11 +21,11 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin, ABC):
 
         if agent_profile is not None:
             self.profile = agent_profile
-            self.agent_name = self.profile.first_name + ' ' + self.profile.last_name
+            self.agent_name = self.profile.first_name + " " + self.profile.last_name
 
         elif uuid_str is not None:
             if not profile_jsonl_path:
-                raise ValueError('uuid_str provided but profile_jsonl_path is missing.')
+                raise ValueError("uuid_str provided but profile_jsonl_path is missing.")
             profile = self._load_profile_from_jsonl(profile_jsonl_path, uuid_str)
             if profile is None:
                 raise ValueError(
@@ -36,7 +36,7 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin, ABC):
             else:
                 self.profile = profile
             self.agent_name = (
-                f'{self.profile.first_name} {self.profile.last_name}'.strip()
+                f"{self.profile.first_name} {self.profile.last_name}".strip()
             )
 
         elif agent_name is not None:
@@ -45,15 +45,15 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin, ABC):
 
         else:
             raise ValueError(
-                'Either agent_profile, uuid_str, or agent_name must be provided.'
+                "Either agent_profile, uuid_str, or agent_name must be provided."
             )
 
         self._goal: str | None = None
-        self.model_name: str = ''
+        self.model_name: str = ""
 
     @property
     def goal(self) -> str:
-        assert self._goal is not None, 'attribute goal has to be set before use'
+        assert self._goal is not None, "attribute goal has to be set before use"
         return self._goal
 
     @goal.setter
@@ -70,9 +70,9 @@ class BaseAgent(Generic[ObsType, ActType], MessengerMixin, ABC):
 
     @staticmethod
     def _load_profile_from_jsonl(path: str, uuid_str: str) -> dict[str, Any] | None:
-        with open(path, encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 data: dict[str, Any] = json.loads(line)
-                if data.get('uuid') == uuid_str:
+                if data.get("uuid") == uuid_str:
                     return data
         return None

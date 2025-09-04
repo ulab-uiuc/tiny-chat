@@ -12,7 +12,7 @@ class LiteLLMProvider(BaseModelProvider):
             from .output_parsers import StrOutputParser
 
             await self.agenerate(
-                template='Hello',
+                template="Hello",
                 input_values={},
                 output_parser=StrOutputParser(),
                 temperature=0.1,

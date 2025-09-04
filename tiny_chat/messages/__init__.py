@@ -13,15 +13,15 @@ from .messages import (
 )
 
 __all__ = [
-    'Message',
-    'SimpleMessage',
-    'Observation',
-    'AgentAction',
-    'ScriptBackground',
-    'TinyChatBackground',
-    'ScriptInteraction',
-    'ScriptEnvironmentResponse',
-    'ActionType',
-    'ScriptInteractionReturnType',
-    'MessengerMixin',
+    "Message",
+    "SimpleMessage",
+    "Observation",
+    "AgentAction",
+    "ScriptBackground",
+    "TinyChatBackground",
+    "ScriptInteraction",
+    "ScriptEnvironmentResponse",
+    "ActionType",
+    "ScriptInteractionReturnType",
+    "MessengerMixin",
 ]

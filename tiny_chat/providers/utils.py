@@ -20,7 +20,7 @@ def prepare_model_config_from_provider(
 
     if not api_key:
         provider_type = config.type.upper()
-        env_key = f'{provider_type}_API_KEY'
+        env_key = f"{provider_type}_API_KEY"
         api_key = os.getenv(env_key)
 
     return api_base, api_key, effective_model
@@ -29,41 +29,41 @@ def prepare_model_config_from_provider(
 def _ensure_v1(url: str) -> str:
     """Ensure URL ends with /v1"""
     if not url:
-        return 'http:///v1'
+        return "http:///v1"
 
-    if not url.startswith(('http://', 'https://')):
-        url = 'http://' + url
+    if not url.startswith(("http://", "https://")):
+        url = "http://" + url
 
-    if url.endswith('/v1'):
+    if url.endswith("/v1"):
         return url
-    trimmed = url[:-1] if url.endswith('/') else url
-    return trimmed + '/v1'
+    trimmed = url[:-1] if url.endswith("/") else url
+    return trimmed + "/v1"
 
 
 def _parse_vllm_config(model_name: str) -> tuple[str | None, str | None, str]:
     """Parse vLLM configuration"""
-    payload = model_name[len('vllm://') :]
-    if '@' not in payload:
+    payload = model_name[len("vllm://") :]
+    if "@" not in payload:
         raise ValueError(
             "vllm:// requires '<model>@<base_url>' or '<base_url>@<model>'"
         )
-    a, b = payload.split('@', 1)
+    a, b = payload.split("@", 1)
     if urlparse(a).scheme or a.startswith(
-        ('http://', 'https://', 'localhost', '127.0.0.1')
+        ("http://", "https://", "localhost", "127.0.0.1")
     ):
         base, model = a, b
     else:
         model, base = a, b
     api_base = _ensure_v1(base)
-    api_key = os.getenv('VLLM_API_KEY')  # optional
+    api_key = os.getenv("VLLM_API_KEY")  # optional
     return api_base, api_key, model
 
 
 def _parse_together_config(model_name: str) -> tuple[str | None, str | None, str]:
     """Parse Together configuration"""
-    model = model_name[len('together://') :]
-    api_base = 'https://api.together.xyz/v1'
-    api_key = os.getenv('TOGETHER_API_KEY')
+    model = model_name[len("together://") :]
+    api_base = "https://api.together.xyz/v1"
+    api_key = os.getenv("TOGETHER_API_KEY")
     return api_base, api_key, model
 
 
@@ -71,17 +71,17 @@ def _parse_custom_config(
     model_name: str, is_legacy: bool = False
 ) -> tuple[str | None, str | None, str]:
     """Parse custom configuration"""
-    prefix = 'custom/' if is_legacy else 'custom://'
+    prefix = "custom/" if is_legacy else "custom://"
     payload = model_name[len(prefix) :]
-    if '@' not in payload:
+    if "@" not in payload:
         raise ValueError(f"{prefix} requires '<model>@<base_url>'")
-    model, base = payload.split('@', 1)
+    model, base = payload.split("@", 1)
     api_base = base
-    api_key = os.getenv('CUSTOM_API_KEY', 'EMPTY')
+    api_key = os.getenv("CUSTOM_API_KEY", "EMPTY")
 
     if is_legacy:
         effective_model = (
-            f'openai/{model}' if not model.startswith('openai/') else model
+            f"openai/{model}" if not model.startswith("openai/") else model
         )
     else:
         effective_model = model
@@ -101,19 +101,19 @@ def prepare_model_config_from_name(
     - Custom OpenAI-compatible proxy:    "custom://<model>@<base>" or legacy "custom/<model>@<base>"
     """
     # vLLM
-    if model_name.startswith('vllm://'):
+    if model_name.startswith("vllm://"):
         return _parse_vllm_config(model_name)
 
     # Together
-    if model_name.startswith('together://'):
+    if model_name.startswith("together://"):
         return _parse_together_config(model_name)
 
     # Custom proxy (new scheme)
-    if model_name.startswith('custom://'):
+    if model_name.startswith("custom://"):
         return _parse_custom_config(model_name, is_legacy=False)
 
     # Custom proxy (legacy form)
-    if model_name.startswith('custom/'):
+    if model_name.startswith("custom/"):
         return _parse_custom_config(model_name, is_legacy=True)
 
     # default OpenAI
@@ -124,15 +124,15 @@ def build_model_name_from_config(config: ModelProviderConfig) -> str:
     """
     from ModelProviderConfig
     """
-    if config.type == 'custom' and config.api_base:
+    if config.type == "custom" and config.api_base:
         # Custom endpoint format: custom://model@url
-        return f'custom://{config.name}@{config.api_base}'
-    elif config.type == 'vllm' and config.api_base:
+        return f"custom://{config.name}@{config.api_base}"
+    elif config.type == "vllm" and config.api_base:
         # vLLM endpoint format: vllm://model@url
-        return f'vllm://{config.name}@{config.api_base}'
-    elif config.type == 'together':
+        return f"vllm://{config.name}@{config.api_base}"
+    elif config.type == "together":
         # Together format: together://model
-        return f'together://{config.name}'
+        return f"together://{config.name}"
     else:
         return config.name
 

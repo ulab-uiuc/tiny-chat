@@ -15,31 +15,31 @@ class RelationshipType(IntEnum):
 class BaseRelationshipProfile(BaseModel):
     """Base relationship profile that supports setting a uniform relationship type among all agents"""
 
-    model_config = {'extra': 'allow'}
+    model_config = {"extra": "allow"}
 
-    pk: str | None = Field(default='')
+    pk: str | None = Field(default="")
 
     # Agent list
     agent_ids: list[str] = Field(
         default_factory=list,
-        description='List of all agent IDs participating in the relationship network',
+        description="List of all agent IDs participating in the relationship network",
     )
 
     # Unified relationship type
     default_relationship: RelationshipType = Field(
         default=RelationshipType.stranger,
-        description='Unified relationship type among all agents: 0=stranger, 1=know_by_name, 2=acquaintance, 3=friend, 4=romantic_relationship, 5=family_member',
+        description="Unified relationship type among all agents: 0=stranger, 1=know_by_name, 2=acquaintance, 3=friend, 4=romantic_relationship, 5=family_member",
     )
 
     # Scenario description
     scenario_context: str | None = Field(
         default=None,
-        description='Scenario background description of the relationship network',
+        description="Scenario background description of the relationship network",
     )
 
     tag: str = Field(
-        default='',
-        description='Tag for the relationship network, used for classification and search',
+        default="",
+        description="Tag for the relationship network, used for classification and search",
     )
 
     def add_agents(self, agent_ids: list[str]) -> None:
@@ -73,22 +73,22 @@ class BaseRelationshipProfile(BaseModel):
         descriptions = []
 
         if self.scenario_context:
-            descriptions.append(f'Scenario: {self.scenario_context}')
+            descriptions.append(f"Scenario: {self.scenario_context}")
 
         descriptions.append(f"Participants: {', '.join(self.agent_ids)}")
 
         rel_name = {
-            RelationshipType.stranger: 'strangers',
-            RelationshipType.know_by_name: 'know by name',
-            RelationshipType.acquaintance: 'acquaintances',
-            RelationshipType.friend: 'friends',
-            RelationshipType.romantic_relationship: 'romantic partners',
-            RelationshipType.family_member: 'family members',
-        }.get(self.default_relationship, 'unknown relationship')
+            RelationshipType.stranger: "strangers",
+            RelationshipType.know_by_name: "know by name",
+            RelationshipType.acquaintance: "acquaintances",
+            RelationshipType.friend: "friends",
+            RelationshipType.romantic_relationship: "romantic partners",
+            RelationshipType.family_member: "family members",
+        }.get(self.default_relationship, "unknown relationship")
 
-        descriptions.append(f'All participants are {rel_name}')
+        descriptions.append(f"All participants are {rel_name}")
 
-        return '\n'.join(descriptions)
+        return "\n".join(descriptions)
 
 
 class FineGrainedRelationshipProfile(BaseRelationshipProfile):
@@ -103,14 +103,14 @@ class FineGrainedRelationshipProfile(BaseRelationshipProfile):
     # Relationship background stories
     relationship_stories: dict[str, str] = Field(
         default_factory=dict,
-        description='Background stories for each relationship pair, same key format as pairwise_relationships',
+        description="Background stories for each relationship pair, same key format as pairwise_relationships",
     )
 
     def _get_relationship_key(self, agent1_id: str, agent2_id: str) -> str:
         """Generate standardized relationship key name (sorted lexicographically)"""
         if agent1_id == agent2_id:
-            raise ValueError('Cannot create relationship between agent and itself')
-        return f'{min(agent1_id, agent2_id)}:{max(agent1_id, agent2_id)}'
+            raise ValueError("Cannot create relationship between agent and itself")
+        return f"{min(agent1_id, agent2_id)}:{max(agent1_id, agent2_id)}"
 
     def set_relationship(
         self,
@@ -158,25 +158,25 @@ class FineGrainedRelationshipProfile(BaseRelationshipProfile):
         descriptions = []
 
         if self.scenario_context:
-            descriptions.append(f'Scenario: {self.scenario_context}')
+            descriptions.append(f"Scenario: {self.scenario_context}")
 
         descriptions.append(f"Participants: {', '.join(self.agent_ids)}")
 
         # Show default relationship
         default_rel_name = {
-            RelationshipType.stranger: 'strangers',
-            RelationshipType.know_by_name: 'know by name',
-            RelationshipType.acquaintance: 'acquaintances',
-            RelationshipType.friend: 'friends',
-            RelationshipType.romantic_relationship: 'romantic partners',
-            RelationshipType.family_member: 'family members',
-        }.get(self.default_relationship, 'unknown relationship')
+            RelationshipType.stranger: "strangers",
+            RelationshipType.know_by_name: "know by name",
+            RelationshipType.acquaintance: "acquaintances",
+            RelationshipType.friend: "friends",
+            RelationshipType.romantic_relationship: "romantic partners",
+            RelationshipType.family_member: "family members",
+        }.get(self.default_relationship, "unknown relationship")
 
-        descriptions.append(f'Default relationship: {default_rel_name}')
+        descriptions.append(f"Default relationship: {default_rel_name}")
 
         # Show personalized relationships
         if self.pairwise_relationships:
-            descriptions.append('Personalized relationships:')
+            descriptions.append("Personalized relationships:")
             for agent1_id in self.agent_ids:
                 for agent2_id in self.agent_ids:
                     if agent1_id < agent2_id:  # Avoid duplicates
@@ -186,20 +186,20 @@ class FineGrainedRelationshipProfile(BaseRelationshipProfile):
                             story = self.relationship_stories.get(key)
 
                             rel_name = {
-                                RelationshipType.stranger: 'strangers',
-                                RelationshipType.know_by_name: 'know by name',
-                                RelationshipType.acquaintance: 'acquaintances',
-                                RelationshipType.friend: 'friends',
-                                RelationshipType.romantic_relationship: 'romantic partners',
-                                RelationshipType.family_member: 'family members',
-                            }.get(relationship, 'unknown relationship')
+                                RelationshipType.stranger: "strangers",
+                                RelationshipType.know_by_name: "know by name",
+                                RelationshipType.acquaintance: "acquaintances",
+                                RelationshipType.friend: "friends",
+                                RelationshipType.romantic_relationship: "romantic partners",
+                                RelationshipType.family_member: "family members",
+                            }.get(relationship, "unknown relationship")
 
-                            rel_desc = f'  {agent1_id} <-> {agent2_id}: {rel_name}'
+                            rel_desc = f"  {agent1_id} <-> {agent2_id}: {rel_name}"
                             if story:
-                                rel_desc += f' ({story})'
+                                rel_desc += f" ({story})"
                             descriptions.append(rel_desc)
 
-        return '\n'.join(descriptions)
+        return "\n".join(descriptions)
 
     def get_relationship_matrix(self) -> dict[str, dict[str, RelationshipType]]:
         """Get relationship matrix for visualization and analysis"""

@@ -52,32 +52,32 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
         Prompt the human user for input based on the current Observation.
         Returns an AgentAction according to the entered command or text.
         """
-        self.recv_message('Environment', obs)
+        self.recv_message("Environment", obs)
 
-        print(f'\n========== Human Agent: {self.agent_name} ==========')
+        print(f"\n========== Human Agent: {self.agent_name} ==========")
         if self.show_help:
             print(HELP_TEXT)
         print(
-            f'[Turn {obs.turn_number}] Available actions: {list(obs.available_actions)}'
+            f"[Turn {obs.turn_number}] Available actions: {list(obs.available_actions)}"
         )
-        print('—— Context ——')
+        print("—— Context ——")
         print(obs.to_natural_language().rstrip())
-        print('—— Enter your input (empty line to finish) ——')
+        print("—— Enter your input (empty line to finish) ——")
 
         lines = await self._read_multiline()
 
         if not any(line.strip() for line in lines):
-            return AgentAction(action_type='none', argument='')
+            return AgentAction(action_type="none", argument="")
 
-        action_type, arg_lines = self._parse_action(lines, default_action='speak')
+        action_type, arg_lines = self._parse_action(lines, default_action="speak")
 
         if action_type not in obs.available_actions:
             print(f"[Note] Action '{action_type}' not allowed, replaced with 'none'")
-            return AgentAction(action_type='none', argument='')
+            return AgentAction(action_type="none", argument="")
 
-        argument = '\n'.join(arg_lines).strip()
-        if action_type in ('leave', 'none'):
-            argument = ''
+        argument = "\n".join(arg_lines).strip()
+        if action_type in ("leave", "none"):
+            argument = ""
 
         return AgentAction(action_type=action_type, argument=argument)
 
@@ -94,14 +94,14 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
 
         while True:
             line = await _readline()
-            if line.strip() == '':
+            if line.strip() == "":
                 break
             lines.append(line)
         return lines
 
     @staticmethod
     def _parse_action(
-        lines: Iterable[str], default_action: str = 'speak'
+        lines: Iterable[str], default_action: str = "speak"
     ) -> tuple[str, list[str]]:
         """
         Check if the first line specifies an action type.
@@ -113,15 +113,15 @@ class HumanAgent(BaseAgent[Observation, AgentAction]):
 
         if lines:
             first = lines[0].strip()
-            prefix = 'action_type:'
+            prefix = "action_type:"
             if first.lower().startswith(prefix):
                 cand = first[len(prefix) :].strip().lower()
                 if cand in {
-                    'none',
-                    'speak',
-                    'non-verbal communication',
-                    'action',
-                    'leave',
+                    "none",
+                    "speak",
+                    "non-verbal communication",
+                    "action",
+                    "leave",
                 }:
                     action = cand
                     content_start = 1

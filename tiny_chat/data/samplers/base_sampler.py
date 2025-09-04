@@ -6,8 +6,8 @@ from tiny_chat.agents import BaseAgent
 from tiny_chat.envs import TinyChatEnvironment
 from tiny_chat.profiles import BaseAgentProfile, BaseEnvironmentProfile
 
-ObsType = TypeVar('ObsType')
-ActType = TypeVar('ActType')
+ObsType = TypeVar("ObsType")
+ActType = TypeVar("ActType")
 
 EnvAgentCombo = tuple[TinyChatEnvironment, Sequence[BaseAgent[ObsType, ActType]]]
 

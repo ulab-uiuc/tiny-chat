@@ -15,21 +15,21 @@ class ModelProviderFactory:
 
     _providers: dict[str, type[BaseModelProvider]] = {
         # LiteLLM provider supports many types
-        'openai': LiteLLMProvider,
-        'anthropic': LiteLLMProvider,
-        'together': LiteLLMProvider,
-        'vllm': LiteLLMProvider,
-        'ollama': LiteLLMProvider,
-        'bedrock': LiteLLMProvider,
-        'azure': LiteLLMProvider,
-        'palm': LiteLLMProvider,
-        'cohere': LiteLLMProvider,
-        'replicate': LiteLLMProvider,
-        'litellm': LiteLLMProvider,
+        "openai": LiteLLMProvider,
+        "anthropic": LiteLLMProvider,
+        "together": LiteLLMProvider,
+        "vllm": LiteLLMProvider,
+        "ollama": LiteLLMProvider,
+        "bedrock": LiteLLMProvider,
+        "azure": LiteLLMProvider,
+        "palm": LiteLLMProvider,
+        "cohere": LiteLLMProvider,
+        "replicate": LiteLLMProvider,
+        "litellm": LiteLLMProvider,
         # Custom endpoints now supported by LiteLLM provider
-        'custom': LiteLLMProvider,
+        "custom": LiteLLMProvider,
         # Workflow provider for extensible use cases
-        'workflow': WorkflowProvider,
+        "workflow": WorkflowProvider,
     }
 
     @classmethod
@@ -38,10 +38,10 @@ class ModelProviderFactory:
         provider_class = cls._providers.get(config.type)
 
         if provider_class is None:
-            available_types = ', '.join(cls._providers.keys())
+            available_types = ", ".join(cls._providers.keys())
             raise ValueError(
-                f'Unknown provider type: {config.type}. '
-                f'Available types: {available_types}'
+                f"Unknown provider type: {config.type}. "
+                f"Available types: {available_types}"
             )
 
         return provider_class(config)
