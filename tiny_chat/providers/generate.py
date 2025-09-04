@@ -73,7 +73,7 @@ async def format_bad_output(
     )
     reformatted_output = response.choices[0].message.content
     assert isinstance(reformatted_output, str)
-    log.info(f"Reformated output: {reformatted_output}")
+    log.info(f"Reformatted output: {reformatted_output}")
     return reformatted_output
 
 
