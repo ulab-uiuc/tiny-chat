@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "tiny-chat"
 version = "0.0.1"
-description = "A simplified multi-agent chat system inspired by Sotopia"
+description = "A lightweight platform for realistic social simulations"
 authors = ["Yining Zhao"]
 license = "MIT License"
 readme = "README.md"
@@ -23,6 +23,7 @@ litellm = "^1.75.0"
 json-repair = "^0.48.0"
 rich = "^14.1.0"
 datasets = "^4.0.0"
+termcolor = "^3.1.0"
 
 
 [tool.poetry.group.dev.dependencies]

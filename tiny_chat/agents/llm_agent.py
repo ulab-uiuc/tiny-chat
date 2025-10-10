@@ -129,3 +129,70 @@ class LLMAgent(BaseAgent[Observation, AgentAction]):
     def _only_none_action(actions: Iterable[str]) -> bool:
         acts = list(actions)
         return len(acts) == 1 and acts[0].casefold() == "none"
+
+    def __str__(self) -> str:
+        """Return formatted string representation of the agent"""
+        lines = []
+        lines.append("=" * 60)
+        lines.append(f"LLM Agent: {self.agent_name}")
+        lines.append("=" * 60)
+        
+        # Basic information
+        if hasattr(self, "profile") and self.profile:
+            lines.append("\nBasic Information:")
+            lines.append(f"  - Name: {self.profile.first_name} {self.profile.last_name}")
+            if self.profile.age:
+                lines.append(f"  - Age: {self.profile.age}")
+            if self.profile.gender:
+                lines.append(f"  - Gender: {self.profile.gender}")
+            if self.profile.occupation:
+                lines.append(f"  - Occupation: {self.profile.occupation}")
+            if self.profile.pk:
+                lines.append(f"  - ID: {self.profile.pk}")
+            lines.append(f"  - Speaking ID: {self.speaking_id}")
+        
+        # Model configuration
+        lines.append("\nModel Configuration:")
+        lines.append(f"  - Provider: {self.provider_type}")
+        lines.append(f"  - Model: {self.effective_model_name}")
+        lines.append(f"  - Script Mode: {self.script_like}")
+        
+        # Goal information
+        if self._goal:
+            lines.append("\nGoal:")
+            goal_lines = self._goal.split('\n')
+            for goal_line in goal_lines:
+                lines.append(f"  {goal_line}")
+        else:
+            lines.append("\nGoal: Not set")
+        
+        # Personality information
+        if hasattr(self, "profile") and self.profile:
+            if self.profile.personality_and_values:
+                lines.append("\nPersonality & Values:")
+                lines.append(f"  {self.profile.personality_and_values}")
+            
+            if self.profile.big_five:
+                lines.append("\nBig Five:")
+                lines.append(f"  {self.profile.big_five}")
+            
+            if self.profile.mbti:
+                lines.append(f"\nMBTI: {self.profile.mbti}")
+            
+            if self.profile.public_info:
+                lines.append("\nPublic Information:")
+                lines.append(f"  {self.profile.public_info}")
+        
+        # Message history
+        if hasattr(self, "inbox") and self.inbox:
+            lines.append(f"\nMessage History: {len(self.inbox)} messages")
+        
+        lines.append("=" * 60)
+        return "\n".join(lines)
+    
+    def __repr__(self) -> str:
+        """Return concise string representation of the agent"""
+        model_info = f"{self.effective_model_name}"
+        if hasattr(self, "profile") and self.profile:
+            return f"LLMAgent(name='{self.agent_name}', model='{model_info}', age={self.profile.age}, occupation='{self.profile.occupation}')"
+        return f"LLMAgent(name='{self.agent_name}', model='{model_info}')"
