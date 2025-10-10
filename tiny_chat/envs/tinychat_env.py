@@ -115,6 +115,14 @@ class TinyChatEnvironment(BaseChatEnivronment):
         if self.action_order == "agent_id_based":
             self._sort_agents_by_speaking_order(agents)
 
+        # Auto-populate options from env_profile if available
+        if options is None:
+            options = {}
+        if hasattr(self, 'env_profile') and self.env_profile:
+            # Use scenario from env_profile if not explicitly provided
+            if 'scenario' not in options and hasattr(self.env_profile, 'scenario'):
+                options['scenario'] = self.env_profile.scenario
+
         self._setup_unified_background(agents, options, omniscient, lite)
 
         self.action_spaces = {
@@ -776,3 +784,87 @@ class TinyChatEnvironment(BaseChatEnivronment):
                 parts.append(f"{source} {act.to_natural_language()}")
 
         return "; ".join(parts) if parts else "No recent actions"
+
+    def __str__(self) -> str:
+        """Return formatted string representation of the environment"""
+        lines = []
+        lines.append("=" * 60)
+        lines.append("TinyChat Environment")
+        lines.append("=" * 60)
+        
+        # Status
+        if self.is_terminated():
+            status = "TERMINATED"
+        elif self.agent_names:
+            status = "ACTIVE"
+        else:
+            status = "NOT INITIALIZED"
+        lines.append(f"\nStatus: {status}")
+        lines.append(f"Turn: {self.turn_number}/{self.max_turns}")
+        
+        # Scenario
+        scenario_text = None
+        if self.env_background:
+            scenario_text = getattr(self.env_background, "scenario", None)
+        
+        if scenario_text:
+            lines.append("\nScenario:")
+            # Wrap long scenario text
+            max_width = 70
+            if len(scenario_text) > max_width:
+                lines.append(f"  {scenario_text[:max_width-3]}...")
+            else:
+                lines.append(f"  {scenario_text}")
+        
+        # Environment metadata (compact, one line)
+        metadata_parts = []
+        if hasattr(self, 'env_profile') and self.env_profile:
+            if hasattr(self.env_profile, 'codename') and self.env_profile.codename:
+                metadata_parts.append(f"codename={self.env_profile.codename}")
+            if hasattr(self.env_profile, 'source') and self.env_profile.source:
+                metadata_parts.append(f"source={self.env_profile.source}")
+            if hasattr(self.env_profile, 'relationship'):
+                metadata_parts.append(f"relationship={self.env_profile.relationship}")
+        
+        if metadata_parts:
+            lines.append(f"\nMetadata: {', '.join(metadata_parts)}")
+        
+        # Agents
+        if self.agent_names:
+            agent_list = []
+            for i, agent_name in enumerate(self.agent_names):
+                status_marker = "Active" if (i < len(self.action_mask) and self.action_mask[i]) else "Waiting"
+                agent_list.append(f"{status_marker} {agent_name}")
+            lines.append(f"\nAgents ({len(self.agent_names)}): {', '.join(agent_list)}")
+        else:
+            lines.append("\nAgents: None")
+        
+        # Configuration details (compact)
+        config_parts = [f"action_order={self.action_order}"]
+        if self.obs_mode != "all":
+            config_parts.append(f"obs_mode={self.obs_mode}")
+        if self.speaking_order:
+            config_parts.append(f"speaking_order={self.speaking_order}")
+        if self.evaluators:
+            config_parts.append(f"evaluators={len(self.evaluators)}")
+        if self.terminal_evaluators:
+            config_parts.append(f"terminal_eval={len(self.terminal_evaluators)}")
+        
+        lines.append(f"\nConfig: {', '.join(config_parts)}")
+        
+        # Actions
+        action_types_str = ', '.join(self.available_action_types) if self.available_action_types else "none"
+        lines.append(f"Actions: {action_types_str}")
+        
+        # Message history (if any)
+        if self.inbox:
+            action_count = sum(1 for _, msg in self.inbox if isinstance(msg, AgentAction) and msg.action_type != "none")
+            lines.append(f"\nHistory: {len(self.inbox)} messages, {action_count} actions")
+        
+        lines.append("=" * 60)
+        return "\n".join(lines)
+    
+    def __repr__(self) -> str:
+        """Return concise string representation of the environment"""
+        status = "terminated" if self.is_terminated() else "active" if self.agent_names else "not_init"
+        return f"TinyChatEnvironment(agents={len(self.agent_names)}, turn={self.turn_number}/{self.max_turns}, order='{self.action_order}', status='{status}')"

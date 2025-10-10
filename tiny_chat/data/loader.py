@@ -3,7 +3,7 @@ from typing import Any
 
 from datasets import load_dataset
 
-from tiny_chat.profiles.relationship_profile import (
+from tiny_chat.profiles import (
     BaseAgentProfile,
     BaseEnvironmentProfile,
     BaseRelationshipProfile,
@@ -12,7 +12,6 @@ from tiny_chat.profiles.relationship_profile import (
 
 
 class DataLoader:
-    """a class to load data from hugging face"""
 
     def __init__(self, use_official: bool = True):
         if use_official:
@@ -28,12 +27,10 @@ class DataLoader:
         self, use_local: bool = False, local_path: str | None = None
     ) -> None:
         if not use_local:
-            # Load the dataset from Hugging Face
             self.agent_profiles = load_dataset(
                 self.hf_repo, data_files=self.agent_profiles_dataset
             )
         else:
-            # Load the dataset from local file
             if local_path is None:
                 raise ValueError("local_path must be provided to load local data")
             try:
@@ -54,7 +51,6 @@ class DataLoader:
 
         profiles = []
         for record in self.agent_profiles:
-            # Create a BaseAgentProfile instance from the record and add it to the list
             agent_profile = BaseAgentProfile(
                 pk=record.get("pk", ""),
                 first_name=record.get("first_name", ""),
@@ -83,12 +79,10 @@ class DataLoader:
         self, use_local: bool = False, local_path: str | None = None
     ) -> None:
         if not use_local:
-            # Load the dataset from Hugging Face
             self.env_profiles = load_dataset(
                 self.hf_repo, data_files=self.env_profiles_dataset
             )
         else:
-            # Load the dataset from local file
             if local_path is None:
                 raise ValueError("local_path must be provided to load local data")
             try:
@@ -109,7 +103,6 @@ class DataLoader:
 
         profiles = []
         for record in self.env_profiles:
-            # Create a BaseEnvironmentProfile instance from the record and add it to the list
             env_profile = BaseEnvironmentProfile(
                 pk=record.get("pk", ""),
                 codename=record.get("codename", ""),
@@ -126,17 +119,14 @@ class DataLoader:
 
         return profiles
 
-    # NOTE: currently only support BaseRelationshipProfile as the same of the jsonl file on Hugging Face
     def load_relationship_profiles(
         self, use_local: bool = False, local_path: str | None = None
     ) -> None:
         if not use_local:
-            # Load the dataset from Hugging Face
             self.relationship_profiles = load_dataset(
                 self.hf_repo, data_files=self.relationship_profiles_dataset
             )
         else:
-            # Load the dataset from local file
             if local_path is None:
                 raise ValueError("local_path must be provided to load local data")
             try:
@@ -167,7 +157,6 @@ class DataLoader:
                 ):
                     agent_ids.add(value)
 
-            # Create a BaseRelationshipProfile instance from the record and add it to the list
             rel_profile = BaseRelationshipProfile(
                 pk=record.get("pk", ""),
                 agent_ids=agent_ids,

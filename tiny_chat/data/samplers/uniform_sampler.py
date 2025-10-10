@@ -36,7 +36,7 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
         self,
         agent_classes: (
             type[BaseAgent[ObsType, ActType]] | list[type[BaseAgent[ObsType, ActType]]]
-        ),
+        ) | None = None,
         n_agent: int = 2,
         replacement: bool = True,
         size: int = 1,
@@ -86,6 +86,9 @@ class UniformSampler(BaseSampler[ObsType, ActType]):
                 raise NotImplementedError("String environment IDs not yet supported")
 
             env = TinyChatEnvironment(**env_params)
+            
+            # Attach env_profile to the environment for later use
+            env.env_profile = env_profile
 
             agent_profile_candidates = self.agent_candidates
             if len(agent_profile_candidates) == n_agent:
